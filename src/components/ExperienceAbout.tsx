@@ -10,6 +10,7 @@ const experience = [
 export function ExperienceAbout() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const [started, setStarted] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const stageRef = useRef<HTMLElement | null>(null);
@@ -29,7 +30,7 @@ export function ExperienceAbout() {
   }, []);
 
   useEffect(() => {
-    if (!started || paused || activeIndex === experience.length - 1) return;
+    if (!started || paused || hovered || activeIndex === experience.length - 1) return;
     const timer = window.setInterval(() => {
       setActiveIndex(current => {
         const next = Math.min(current + 1, experience.length - 1);
@@ -38,7 +39,7 @@ export function ExperienceAbout() {
       });
     }, 5600);
     return () => window.clearInterval(timer);
-  }, [started, paused, activeIndex]);
+  }, [started, paused, hovered, activeIndex]);
 
   const goTo = useCallback((index: number) => {
     setActiveIndex(Math.max(0, Math.min(index, experience.length - 1)));
@@ -87,7 +88,7 @@ export function ExperienceAbout() {
           </div>
         </div>
 
-        <div className="experience-marquee w-full overflow-hidden" onMouseEnter={() => setPaused(true)} onMouseLeave={() => { if (!pointerStart.current) setPaused(false); }}>
+        <div className="experience-marquee w-full overflow-hidden" onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
           <div
             className="experience-track flex"
             style={{ transform: `translate3d(calc(-${activeIndex * 33.333333}% + ${dragOffset}px),0,0)`, transition: pointerStart.current ? 'none' : 'transform 850ms cubic-bezier(.22,1,.36,1)' }}
