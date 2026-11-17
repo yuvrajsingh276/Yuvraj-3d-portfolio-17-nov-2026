@@ -332,8 +332,8 @@ export function computeOrbitalLayout(
   const isPortrait = aspect < 0.85;
   // One shared, fixed 3D oval. Its plane is tilted 20 degrees around X.
   // Every icon uses the same radii and evenly spaced catalog angles.
-  const radiusX = isPortrait ? 5.0 : 8.55;
-  const radiusY = isPortrait ? 5.45 : 3.72;
+  const radiusX = isPortrait ? 5.0 : 9.35;
+  const radiusY = isPortrait ? 5.45 : 4.08;
   const tilt = (20 * Math.PI) / 180;
 
   return tools.map((tool, index) => {
