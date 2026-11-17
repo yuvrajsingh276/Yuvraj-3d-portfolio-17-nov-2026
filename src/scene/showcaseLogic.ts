@@ -829,7 +829,7 @@ export function computeDecorativePropsLayout(aspect = 1.6): DecorativePropSlot[]
     },
     {
       nodeName: 'deco_triangle',
-      position: isPortrait ? [6.25, 0.85, -0.6] : [9.35, 1.45, -0.6],
+      position: isPortrait ? [6.25, 0.85, -0.6] : [8.0, 2.7, -0.6],
       rotation: [0.15, -0.35, 0.25],
       targetSize: 0.44,
       phase: 1.6,
