@@ -341,8 +341,8 @@ export class ShowcaseStage {
     }
 
     const isPortrait = this.currentAspect < 0.85;
-    const radiusX = isPortrait ? 5.0 : 8.55;
-    const radiusY = isPortrait ? 5.45 : 3.72;
+    const radiusX = isPortrait ? 5.0 : 9.35;
+    const radiusY = isPortrait ? 5.45 : 4.08;
     const tilt = (20 * Math.PI) / 180;
     const pointOnOrbit = (angle: number, scale = 1) => {
       const orbitY = Math.sin(angle) * radiusY * scale;
@@ -383,7 +383,7 @@ export class ShowcaseStage {
       new THREE.MeshBasicMaterial({
         vertexColors: true,
         transparent: true,
-        opacity: 0.15,
+        opacity: 0.3,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         depthTest: true,
@@ -394,7 +394,7 @@ export class ShowcaseStage {
       new THREE.MeshBasicMaterial({
         vertexColors: true,
         transparent: true,
-        opacity: 0.2,
+        opacity: 0.36,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         depthTest: true,
@@ -406,9 +406,9 @@ export class ShowcaseStage {
 
     // Fine broken accents follow the same tilted ellipse without forming full rings.
     const accentArcs = [
-      { start: 0.035, end: 0.285, scale: 1.022, radius: 0.0018, opacity: 0.27 },
-      { start: 0.365, end: 0.595, scale: 0.978, radius: 0.00155, opacity: 0.23 },
-      { start: 0.695, end: 0.935, scale: 1.038, radius: 0.0017, opacity: 0.25 },
+      { start: 0.035, end: 0.285, scale: 1.022, radius: 0.0021, opacity: 0.34 },
+      { start: 0.365, end: 0.595, scale: 0.978, radius: 0.0019, opacity: 0.3 },
+      { start: 0.695, end: 0.935, scale: 1.038, radius: 0.002, opacity: 0.32 },
     ];
     accentArcs.forEach((arc, index) => {
       const arcPoints = Array.from({ length: 52 }, (_, i) => {
@@ -570,7 +570,7 @@ export class ShowcaseStage {
   }
 
   private initParticles() {
-    const count = 220;
+    const count = 360;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
 
@@ -597,7 +597,7 @@ export class ShowcaseStage {
       positions[i * 3] = Math.cos(theta) * r;
       positions[i * 3 + 1] = y;
       // Seed particles throughout real camera depth, from far background to foreground.
-      positions[i * 3 + 2] = -14 + rand() * 23;
+      positions[i * 3 + 2] = -20 + rand() * 32;
 
       const c = palette[i % palette.length];
       colors[i * 3] = c.r;
@@ -607,13 +607,13 @@ export class ShowcaseStage {
 
     this.dustBasePositions = new Float32Array(positions);
     this.dustVelocities = new Float32Array(count);
-    for (let i = 0; i < count; i++) this.dustVelocities[i] = 1.0 + rand() * 1.35;
+    for (let i = 0; i < count; i++) this.dustVelocities[i] = 1.8 + rand() * 1.8;
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
     const mat = new THREE.PointsMaterial({
-      size: 0.085,
+      size: 0.095,
       map: this.textures.particleSprite,
       transparent: true,
       opacity: 0.36,
@@ -1031,9 +1031,9 @@ export class ShowcaseStage {
       for (let i = 0; i < this.dustVelocities.length; i++) {
         const offset = i * 3;
         let z = positions[offset + 2] + this.dustVelocities[i] * dt;
-        if (z > 9) z = -14;
+        if (z > 12) z = -20;
         positions[offset + 2] = z;
-        const depthProgress = (z + 14) / 23;
+        const depthProgress = (z + 20) / 32;
         const perspectiveScale = 0.48 + depthProgress * 1.28;
         positions[offset] = this.dustBasePositions[offset] * perspectiveScale;
         positions[offset + 1] = this.dustBasePositions[offset + 1] * perspectiveScale;
