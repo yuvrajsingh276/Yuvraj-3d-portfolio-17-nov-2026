@@ -174,3 +174,17 @@ section[id], div[id="work"] { scroll-margin-top: 5.5rem; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { scroll-behavior: auto !important; }
 }
+
+
+/* Responsive interaction and gallery ergonomics */
+.work-gallery-track {
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 1.5rem;
+  -webkit-overflow-scrolling: touch;
+}
+.work-gallery-track > button { scroll-snap-align: center; }
+@media (max-width: 640px) {
+  .experience-stage { padding-block: 4rem; }
+  .experience-track > article { padding-inline: max(1.5rem, 7vw); }
+  .work-exhibition { padding-block: 4.5rem; }
+}
