@@ -321,12 +321,12 @@ export class ShowcaseStage {
 
   private initOrbitalGuideRing(aspect: number) {
     this.orbitGuideRing = new THREE.Group();
-    this.orbitGuideRing.position.z = -2.4;
+    // Keep the orbit in the exact same coordinate space as the icon anchors.
     this.constellationGroup.add(this.orbitGuideRing);
     this.rebuildOrbitalGuideRing(aspect, this.magneticRotation.angleDeg);
   }
 
-  /** Four slim, stationary gradient arcs matching the original orbital silhouette. */
+  /** Thin glowing orbit sampled directly from the icon anchor positions. */
   private rebuildOrbitalGuideRing(aspect: number, angleOffsetDeg: number) {
     if (!this.orbitGuideRing) return;
 
@@ -339,39 +339,58 @@ export class ShowcaseStage {
       else material?.dispose();
     }
 
-    const isPortrait = aspect < 0.85;
-    const xStretch = isPortrait ? 0.92 : 1.46;
-    const yBoost = isPortrait ? 2.15 : 1.16;
-    const tiltFactor = isPortrait ? 0.1 : 0.18;
-    const palette = ['#ff3b36', '#ffd84a', '#438cff', '#f5f8ff'];
-    const arcLength = Math.PI * 0.62;
+    const slots = computeOrbitalLayout(TOOLS_CATALOG, aspect, angleOffsetDeg);
+    if (slots.length < 3) return;
 
-    for (let arc = 0; arc < 4; arc++) {
-      const startAngle = (arc / 4) * Math.PI * 2 + 0.18 + THREE.MathUtils.degToRad(angleOffsetDeg);
-      const points: THREE.Vector3[] = [];
-      const count = 56;
-      for (let i = 0; i < count; i++) {
-        const angle = startAngle + (i / (count - 1)) * arcLength;
-        const x = Math.cos(angle) * 5.38 * xStretch;
-        const z = Math.sin(angle) * 2.69 - 2.4;
-        const y = Math.sin(angle) * 2.85 * yBoost + x * tiltFactor + 0.15;
-        points.push(new THREE.Vector3(x, y, z));
+    // Same x/y curve as every icon; only a small depth offset keeps the line behind them.
+    const points = slots.map((slot) =>
+      new THREE.Vector3(slot.position[0], slot.position[1], slot.position[2] - 0.34)
+    );
+    const curve = new THREE.CatmullRomCurve3(points, true, 'centripetal', 0.35);
+    const tubularSegments = Math.max(360, slots.length * 64);
+    const radialSegments = 5;
+
+    const makeGradientTube = (radius: number) => {
+      const geometry = new THREE.TubeGeometry(curve, tubularSegments, radius, radialSegments, true);
+      const colors = new Float32Array(geometry.getAttribute('position').count * 3);
+      const verticesPerRing = radialSegments + 1;
+      for (let i = 0; i < colors.length / 3; i++) {
+        const t = Math.floor(i / verticesPerRing) / tubularSegments;
+        const [r, g, b] = sampleYellowRedOrangeBlueGradient(t);
+        colors[i * 3] = r;
+        colors[i * 3 + 1] = g;
+        colors[i * 3 + 2] = b;
       }
+      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      return geometry;
+    };
 
-      const curve = new THREE.CatmullRomCurve3(points, false, 'centripetal');
-      const geometry = new THREE.TubeGeometry(curve, 84, 0.009, 5, false);
-      const color = new THREE.Color(palette[arc]);
-      const material = new THREE.MeshBasicMaterial({
-        color,
+    // Very slim soft aura beneath an even finer, crisp gradient core.
+    const aura = new THREE.Mesh(
+      makeGradientTube(0.028),
+      new THREE.MeshBasicMaterial({
+        vertexColors: true,
         transparent: true,
-        opacity: 0.76,
+        opacity: 0.34,
+        blending: THREE.AdditiveBlending,
         depthWrite: false,
         depthTest: true,
-      });
-      const line = new THREE.Mesh(geometry, material);
-      line.renderOrder = 2;
-      this.orbitGuideRing.add(line);
-    }
+      })
+    );
+    const core = new THREE.Mesh(
+      makeGradientTube(0.008),
+      new THREE.MeshBasicMaterial({
+        vertexColors: true,
+        transparent: true,
+        opacity: 1.0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        depthTest: true,
+      })
+    );
+    aura.renderOrder = 1;
+    core.renderOrder = 2;
+    this.orbitGuideRing.add(aura, core);
   }
 
   private initScatterBurstParticles() {
