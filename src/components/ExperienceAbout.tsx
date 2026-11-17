@@ -36,7 +36,7 @@ export function ExperienceAbout() {
             <h2 className="text-[clamp(2.5rem,7vw,5.5rem)] font-semibold leading-[0.95] tracking-[-0.055em] text-white">Experience<span className="text-violet-300">.</span></h2>
             <p className="mt-4 max-w-md text-sm leading-relaxed text-white/45">A journey across broadcast, product visualisation and brand storytelling.</p>
           </div>
-          <button type="button" onClick={() => setPaused(v => !v)} onPointerDown={() => setPaused(true)} onPointerUp={() => setPaused(false)} onPointerLeave={() => setPaused(false)} aria-label={paused ? 'Play experience carousel' : 'Pause experience carousel'} className="mb-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/15 text-white/75 transition hover:border-violet-300/60 hover:text-violet-200">
+          <button type="button" onClick={() => setPaused(v => !v)} aria-label={paused ? 'Play experience carousel' : 'Pause experience carousel'} className="mb-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/15 text-white/75 transition hover:border-violet-300/60 hover:text-violet-200">
             {paused ? <Play className="h-4 w-4 fill-current" /> : <Pause className="h-4 w-4" />}
           </button>
         </div>
