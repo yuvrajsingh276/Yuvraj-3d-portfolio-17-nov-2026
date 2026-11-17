@@ -55,10 +55,13 @@ export default function App() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const target = e.target;
+      const interactive = target instanceof HTMLElement && (
+        target.isContentEditable || !!target.closest('button, a, input, textarea, select, [role="button"]')
+      );
       if (e.key === 'Escape') {
         stageRef.current?.resetView();
-      } else if (e.code === 'Space') {
+      } else if (e.code === 'Space' && !interactive && window.scrollY < window.innerHeight * 0.8) {
         e.preventDefault();
         handleToggleMotion();
       }
