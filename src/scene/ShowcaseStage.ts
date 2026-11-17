@@ -55,21 +55,6 @@ const _vec3A = new THREE.Vector3();
 const _vec3B = new THREE.Vector3();
 const _colorA = new THREE.Color();
 
-function detectSoftwareWebGL(): boolean {
-  try {
-    const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl2');
-    if (!gl) return true;
-    const ext = gl.getExtension('WEBGL_debug_renderer_info');
-    const param = ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER;
-    const gpu = String(gl.getParameter(param) || '');
-    gl.getExtension('WEBGL_lose_context')?.loseContext();
-    return /SwiftShader|llvmpipe|softpipe|Software|Basic Render/i.test(gpu);
-  } catch {
-    return true;
-  }
-}
-
 export class ShowcaseStage {
   private container: HTMLElement;
   private callbacks: ShowcaseCallbacks;
@@ -159,7 +144,8 @@ export class ShowcaseStage {
   constructor(container: HTMLElement, callbacks: ShowcaseCallbacks = {}) {
     this.container = container;
     this.callbacks = callbacks;
-    this.isSoftwareGl = detectSoftwareWebGL();
+    // Avoid creating and destroying a probe WebGL context; use the stage's single context only.
+    this.isSoftwareGl = false;
     this.reducedMotion =
       typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -661,13 +647,6 @@ export class ShowcaseStage {
         slots[i].baseRotationY,
         slots[i].baseRotationZ
       );
-    }
-
-    if (this.orbitGuideRing) {
-      const nextRingPts = this.buildOrbitGuidePositions(aspect);
-      const ringAttr = this.orbitGuideRing.geometry.attributes.position as THREE.BufferAttribute;
-      (ringAttr.array as Float32Array).set(nextRingPts);
-      ringAttr.needsUpdate = true;
     }
 
     const propSlots = computeDecorativePropsLayout(aspect);
