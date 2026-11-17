@@ -30,6 +30,7 @@ export function ParticleWaveBackground() {
     let targetX = 0.5;
     let targetY = 0.5;
     let pointerInside = false;
+    const glowTrail: { x: number; y: number; born: number; hue: number }[] = [];
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     let seed = 92741;
@@ -40,24 +41,9 @@ export function ParticleWaveBackground() {
     const gridCellSize = 108;
     let gridCols = 1;
     let gridRows = 1;
-    let gridOpacity: number[] = [];
-    let gridTarget: number[] = [];
-    let nextGridChange = 0;
-    const gridParticles = Array.from({ length: 16 }, (_, i) => ({
-      progress: (i * 0.61803398875) % 1,
-      speed: 0.025 + random() * 0.045,
-      row: Math.floor(random() * 12),
-      horizontal: random() > 0.5,
-      phase: random() * TAU,
-    }));
-
     const rebuildGrid = () => {
       gridCols = Math.ceil(width / gridCellSize);
       gridRows = Math.ceil(height / gridCellSize);
-      const count = gridCols * gridRows;
-      gridOpacity = Array.from({ length: count }, () => random() * 0.018);
-      gridTarget = gridOpacity.slice();
-      nextGridChange = 0;
     };
 
     const particles: Particle[] = Array.from({ length: 3200 }, () => ({
@@ -86,6 +72,15 @@ export function ParticleWaveBackground() {
       targetY = clamp((event.clientY - rect.top) / Math.max(1, rect.height), 0, 1);
       pointerInside = event.clientX >= rect.left && event.clientX <= rect.right
         && event.clientY >= rect.top && event.clientY <= rect.bottom;
+      if (pointerInside) {
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        const last = glowTrail[glowTrail.length - 1];
+        if (!last || Math.hypot(x - last.x, y - last.y) > 18) {
+          glowTrail.push({ x, y, born: elapsed, hue: glowTrail.length % 2 });
+          if (glowTrail.length > 14) glowTrail.shift();
+        }
+      }
     };
     const resetPointer = () => { targetX = 0.5; targetY = 0.5; pointerInside = false; };
 
@@ -107,32 +102,38 @@ export function ParticleWaveBackground() {
       ctx.fillStyle = aura;
       ctx.fillRect(0, 0, width, height);
 
-      // Fine grid: low-contrast cells fade between filled and empty states.
-      if (time >= nextGridChange) {
-        for (let i = 0; i < gridTarget.length; i++) {
-          gridTarget[i] = random() > 0.64 ? 0.045 + random() * 0.018 : 0.002 + random() * 0.012;
-        }
-        nextGridChange = time + 1.4 + random() * 1.5;
-      }
+      // Static, understated grid. Pointer movement leaves a fading purple/red light trail.
       const cellW = width / Math.max(1, gridCols);
       const cellH = height / Math.max(1, gridRows);
       for (let row = 0; row < gridRows; row++) {
         for (let col = 0; col < gridCols; col++) {
-          const index = row * gridCols + col;
-          const current = gridOpacity[index] ?? 0;
-          const target = gridTarget[index] ?? 0;
-          const next = current + (target - current) * 0.035;
-          gridOpacity[index] = next;
-          if (next > 0.009) {
-            ctx.fillStyle = `rgba(112,145,205,${next.toFixed(3)})`;
+          const cx = (col + 0.5) * cellW;
+          const cy = (row + 0.5) * cellH;
+          let glow = 0;
+          let hue = 0;
+          for (let i = 0; i < glowTrail.length; i++) {
+            const point = glowTrail[i];
+            const age = time - point.born;
+            if (age > 2.4) continue;
+            const distance = Math.hypot(cx - point.x, cy - point.y);
+            const influence = Math.max(0, 1 - distance / (Math.min(cellW, cellH) * 2.25));
+            const strength = influence * Math.pow(1 - age / 2.4, 1.45);
+            if (strength > glow) {
+              glow = strength;
+              hue = point.hue;
+            }
+          }
+          if (glow > 0.012) {
+            const color = hue === 0 ? '168,85,247' : '244,63,94';
+            ctx.fillStyle = `rgba(${color},${(glow * 0.23).toFixed(3)})`;
             ctx.fillRect(col * cellW + 1, row * cellH + 1, cellW - 2, cellH - 2);
           }
         }
       }
 
-      // Delicate grid lines with a restrained 5% contrast shift.
+      // Fine static grid lines remain subtle until the pointer passes nearby.
       ctx.lineWidth = 0.65;
-      ctx.strokeStyle = 'rgba(105,125,165,0.035)';
+      ctx.strokeStyle = 'rgba(145,150,180,0.045)';
       ctx.beginPath();
       for (let col = 0; col <= gridCols; col++) {
         const x = col * cellW;
@@ -146,18 +147,22 @@ export function ParticleWaveBackground() {
       }
       ctx.stroke();
 
-      // Tiny light points glide along selected grid lines.
-      for (let i = 0; i < gridParticles.length; i++) {
-        const p = gridParticles[i];
-        p.progress = (p.progress + p.speed / 30) % 1;
-        const horizontal = p.horizontal;
-        const x = horizontal ? p.progress * width : ((p.row % gridCols) + 0.5) * cellW;
-        const y = horizontal ? ((p.row % gridRows) + 0.5) * cellH : p.progress * height;
-        const pulse = 0.45 + 0.35 * Math.sin(time * 1.7 + p.phase);
-        ctx.fillStyle = `rgba(133,190,255,${pulse.toFixed(2)})`;
-        ctx.beginPath();
-        ctx.arc(x, y, 1.05, 0, TAU);
-        ctx.fill();
+      for (let i = glowTrail.length - 1; i >= 0; i--) {
+        const point = glowTrail[i];
+        const age = time - point.born;
+        if (age > 2.4) {
+          glowTrail.splice(i, 1);
+          continue;
+        }
+        const fade = Math.pow(1 - age / 2.4, 1.35);
+        const radius = Math.min(width, height) * (0.16 + age * 0.035);
+        const glow = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, radius);
+        const color = point.hue === 0 ? '168,85,247' : '244,63,94';
+        glow.addColorStop(0, `rgba(${color},${(0.16 * fade).toFixed(3)})`);
+        glow.addColorStop(0.42, `rgba(${color},${(0.075 * fade).toFixed(3)})`);
+        glow.addColorStop(1, `rgba(${color},0)`);
+        ctx.fillStyle = glow;
+        ctx.fillRect(point.x - radius, point.y - radius, radius * 2, radius * 2);
       }
 
       // Three restrained color batches keep the draw loop inexpensive.
