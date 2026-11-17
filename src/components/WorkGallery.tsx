@@ -81,6 +81,7 @@ export function WorkGallery() {
   const detailScrollRef = useRef<HTMLDivElement>(null);
   const previousPageScroll = useRef(0);
   const previousBodyOverflow = useRef('');
+  const previousHtmlOverflow = useRef('');
   const drag = useRef({ active: false, moved: false, startX: 0, scrollLeft: 0 });
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -94,12 +95,14 @@ export function WorkGallery() {
   const openProject = useCallback((project: Project) => {
     previousPageScroll.current = window.scrollY;
     previousBodyOverflow.current = document.body.style.overflow;
+    previousHtmlOverflow.current = document.documentElement.style.overflow;
     setActiveProject(project);
   }, []);
 
   const closeProject = useCallback(() => {
     setActiveProject(null);
     document.body.style.overflow = previousBodyOverflow.current;
+    document.documentElement.style.overflow = previousHtmlOverflow.current;
     requestAnimationFrame(() => {
       window.scrollTo({ top: previousPageScroll.current, behavior: 'auto' });
       if (activeProject) cardRefs.current[activeProject.id]?.focus({ preventScroll: true });
@@ -109,6 +112,7 @@ export function WorkGallery() {
   useEffect(() => {
     if (!activeProject) return;
     document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
     detailScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') closeProject();
@@ -128,6 +132,7 @@ export function WorkGallery() {
     return () => {
       window.removeEventListener('keydown', onKeyDown);
       document.body.style.overflow = previousBodyOverflow.current;
+      document.documentElement.style.overflow = previousHtmlOverflow.current;
     };
   }, [activeProject, closeProject]);
 
@@ -147,6 +152,7 @@ export function WorkGallery() {
   const onPointerUp = () => {
     drag.current.active = false;
     setDragging(false);
+    requestAnimationFrame(() => { drag.current.moved = false; });
   };
 
   return (
