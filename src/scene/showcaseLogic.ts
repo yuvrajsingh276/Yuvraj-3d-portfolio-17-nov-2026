@@ -837,7 +837,7 @@ export function computeDecorativePropsLayout(aspect = 1.6): DecorativePropSlot[]
     },
     {
       nodeName: 'exclaim_left_dot',
-      position: isPortrait ? [-6.25, -0.55, 0.7] : [-9.35, -1.15, 0.7],
+      position: isPortrait ? [-6.25, -0.55, 0.7] : [-9.3, 0.0, 0.7],
       rotation: [0.05, 0.2, -0.22],
       targetSize: 0.56,
       phase: 2.3,
