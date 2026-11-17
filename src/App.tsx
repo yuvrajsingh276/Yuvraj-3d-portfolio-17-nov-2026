@@ -197,7 +197,7 @@ export default function App() {
 
       {/* Video section slides over the pinned hero as the visitor scrolls */}
       <section
-        id="about"
+        id="intro-video"
         aria-label="Video introduction"
         className="relative z-20 mt-[100vh] flex min-h-screen w-full items-center justify-center border-t border-white/[0.06] bg-[#070912] px-6 py-24"
       >
