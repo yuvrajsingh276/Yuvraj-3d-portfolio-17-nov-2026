@@ -188,15 +188,18 @@ export class ShowcaseStage {
     const aspect = width / height;
 
     this.renderer = new THREE.WebGLRenderer({
+      alpha: true,
       antialias: !this.isSoftwareGl,
       powerPreference: 'high-performance',
+      preserveDrawingBuffer: false,
     });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.84;
     this.renderer.setPixelRatio(
-      this.isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2)
+      this.isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 1.35)
     );
+    this.renderer.setClearColor(0x000000, 0);
     this.renderer.setSize(width, height);
     this.renderer.shadowMap.enabled = !this.isSoftwareGl;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -209,7 +212,7 @@ export class ShowcaseStage {
     this.container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#080b18');
+    this.scene.background = null;
     this.scene.fog = new THREE.FogExp2('#080b18', 0.012);
 
     const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
@@ -223,7 +226,7 @@ export class ShowcaseStage {
     this.camera = new THREE.PerspectiveCamera(44, aspect, 0.1, 120);
     this.camera.position.set(0, 0.15, camDist);
 
-    if (!this.isSoftwareGl) {
+    if (!this.isSoftwareGl && (this.bloomIntensity > 0.001 || this.dofStrength > 0.001)) {
       const initDof = computeDofConfig(camDist, this.currentFocusWorldZ, this.dofStrength);
       const initBloom = computeBloomConfig(this.bloomIntensity);
       this.composer = new EffectComposer(this.renderer);
@@ -321,6 +324,7 @@ export class ShowcaseStage {
 
     // Fluted violet-glass aurora backdrop with interactive cursor refraction
     this.flutedBg = createFlutedAuroraBackground();
+    this.flutedBg.mesh.visible = false;
     this.scene.add(this.flutedBg.mesh);
 
     // Subtle thin tilted orbital guide ring around central typography
