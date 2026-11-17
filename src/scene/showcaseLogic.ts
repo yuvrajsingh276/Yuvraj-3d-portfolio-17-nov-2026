@@ -330,8 +330,8 @@ export function computeOrbitalLayout(
   angleOffsetDeg = 0
 ): OrbitalSlot[] {
   const isPortrait = aspect < 0.85;
-  // One shared, fixed 3D oval. Its plane is tilted 20 degrees around X.
-  // Every icon uses the same radii and evenly spaced catalog angles.
+  // A shared orbital ellipse with per-tool depth staging for a true foreground / background read.
+  // Catalog depth bias is deliberately scaled so the orbit has visible Z separation on wide screens.
   const radiusX = isPortrait ? 5.0 : 9.35;
   const radiusY = isPortrait ? 5.45 : 4.08;
   const tilt = (20 * Math.PI) / 180;
@@ -341,7 +341,7 @@ export function computeOrbitalLayout(
     const x = Math.cos(rad) * radiusX;
     const orbitY = Math.sin(rad) * radiusY;
     const y = orbitY * Math.cos(tilt);
-    const z = orbitY * Math.sin(tilt);
+    const z = orbitY * Math.sin(tilt) + tool.zDepthBias * 2;
 
     const baseRotationY = Math.atan2(-x, 15 - z) * 0.48;
     const baseRotationX = Math.sin(rad) * 0.12 + (index % 2 === 0 ? 0.06 : -0.05);
