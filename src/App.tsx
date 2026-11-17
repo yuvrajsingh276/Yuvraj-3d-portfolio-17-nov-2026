@@ -4,6 +4,7 @@ import { ShowcaseStage } from './scene/ShowcaseStage';
 import { ParticleWaveBackground } from './components/ParticleWaveBackground';
 import { ShowcaseHUD } from './components/ShowcaseHUD';
 import type { ToolSpec } from './scene/showcaseLogic';
+import { WorkGallery } from './components/WorkGallery';
 
 const HERO_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
@@ -212,19 +213,10 @@ export default function App() {
         </div>
       </section>
 
-      {/* Work section placeholder; visual treatment and animation to be designed next */}
-      <section
-        id="work"
-        aria-label="Selected work"
-        className="relative z-20 flex min-h-screen w-full items-center justify-center border-t border-white/[0.06] bg-[#03050b] px-6 py-24"
-      >
-        <div className="mx-auto w-full max-w-6xl">
-          <div className="mb-8 text-[11px] font-medium uppercase tracking-[0.3em] text-violet-300/70">02 / SELECTED PROJECTS</div>
-          <div className="flex min-h-[55vh] items-center justify-center rounded-2xl border border-white/[0.08] bg-[radial-gradient(ellipse_at_50%_50%,rgba(70,80,130,0.13),transparent_60%),#080b14]">
-            <span className="text-[clamp(3rem,11vw,8rem)] font-semibold tracking-[0.2em] text-white/75">WORK</span>
-          </div>
-        </div>
-      </section>
+      {/* Cinematic horizontal project exhibition; all other portfolio sections remain unchanged */}
+      <div id="work" className="relative z-20 border-t border-white/[0.06]">
+        <WorkGallery />
+      </div>
       </div>
     </MotionConfig>
   );
