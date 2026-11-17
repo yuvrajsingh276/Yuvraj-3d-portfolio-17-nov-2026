@@ -51,8 +51,8 @@ void main() {
   float aspect = max(0.4, uResolution.x / max(1.0, uResolution.y));
   vec2 uv = vUv;
 
-  // Deep obsidian void matching reference
-  vec3 baseDark = vec3(0.015, 0.014, 0.032);
+  // Rich midnight-navy base for a cleaner, more premium dark canvas
+  vec3 baseDark = vec3(0.025, 0.032, 0.064);
 
   // Cursor delta in aspect-corrected space for smooth circular refraction & spotlight
   vec2 deltaMouse = (uv - uMouse) * vec2(aspect, 1.0);
@@ -90,8 +90,8 @@ void main() {
   // Combine smooth diagonal beam with delicate fluted glass glints
   float intensity = (beam1 * 0.88 + beam2 * 0.86) * fluteMask;
 
-  // Cursor spotlight illuminating glass ribs smoothly wherever the mouse hovers
-  float cursorSpotlight = cursorField * (0.16 + uMouseSpeed * 0.24) * (0.72 + 0.28 * ribSoft + 0.45 * ribHairline);
+  // Very restrained cursor tint: a subtle ~10% lift rather than a bright spotlight
+  float cursorSpotlight = cursorField * 0.10 * (0.82 + 0.18 * ribSoft + 0.12 * ribHairline);
 
   // Reference color ramp: royal indigo -> electric violet -> soft lavender-white core
   vec3 colIndigo = vec3(0.20, 0.05, 0.52);
