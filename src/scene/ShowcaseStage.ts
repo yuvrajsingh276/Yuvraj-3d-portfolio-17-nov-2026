@@ -196,11 +196,13 @@ export class ShowcaseStage {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.84;
+    // Keep the 3D stage lightweight: the separate 2D particle canvas supplies the background.
+    // A capped render scale avoids exhausting browser GPU memory on high-DPI displays.
     this.renderer.setPixelRatio(
-      this.isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2)
+      this.isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 1.35)
     );
     this.renderer.setSize(width, height);
-    this.renderer.shadowMap.enabled = !this.isSoftwareGl;
+    this.renderer.shadowMap.enabled = false;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.renderer.domElement.style.display = 'block';
@@ -225,7 +227,9 @@ export class ShowcaseStage {
     this.camera = new THREE.PerspectiveCamera(44, aspect, 0.1, 120);
     this.camera.position.set(0, 0.15, camDist);
 
-    if (!this.isSoftwareGl) {
+    // Bloom and depth-of-field are disabled; render directly instead of allocating
+    // multiple full-resolution post-processing render targets.
+    if (!this.isSoftwareGl && (this.bloomIntensity > 0.001 || this.dofStrength > 0.001)) {
       const initDof = computeDofConfig(camDist, this.currentFocusWorldZ, this.dofStrength);
       const initBloom = computeBloomConfig(this.bloomIntensity);
       this.composer = new EffectComposer(this.renderer);
@@ -593,11 +597,21 @@ export class ShowcaseStage {
 
   private handleContextLost = (e: Event) => {
     e.preventDefault();
+    // Stop submitting frames while the browser has suspended the GPU context.
+    cancelAnimationFrame(this.frameId);
     this.callbacks.onContextLostChange?.(true);
   };
 
   private handleContextRestored = () => {
+    if (this.disposed) return;
+    // Rebuild renderer-owned render state and resume the animation loop.
+    this.renderer.setPixelRatio(
+      this.isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 1.35)
+    );
+    this.handleResize();
+    this.lastTimeMs = performance.now();
     this.callbacks.onContextLostChange?.(false);
+    if (!this.isSoftwareGl) this.frameId = requestAnimationFrame(this.tick);
   };
 
   private handleResize = () => {
