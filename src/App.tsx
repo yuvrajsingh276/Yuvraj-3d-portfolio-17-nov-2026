@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { ShowcaseStage } from './scene/ShowcaseStage';
-import { ParticleWaveBackground } from './components/ParticleWaveBackground';
 import { ShowcaseHUD } from './components/ShowcaseHUD';
 import type { ToolSpec } from './scene/showcaseLogic';
 
@@ -66,19 +65,25 @@ export default function App() {
           e.currentTarget.style.setProperty('--pointer-x', e.clientX + 'px');
           e.currentTarget.style.setProperty('--pointer-y', e.clientY + 'px');
         }}
-        className="relative isolate h-screen w-screen overflow-hidden bg-[#02040a]"
+        className="relative h-screen w-screen overflow-hidden bg-[#080b18]"
         data-selected-tool={selectedTool?.id ?? 'none'}
         data-hovered-tool={hoveredTool?.id ?? 'none'}
         data-motion-paused={String(motionPaused)}
       >
-        {/* Animated particle-wave background; isolated behind all existing hero content */}
-        <ParticleWaveBackground />
-
-        {/* Existing interactive 3D canvas remains above the background and below foreground UI */}
+        {/* Isolated WebGL canvas mount container (never re-rendered on HUD state updates) */}
         <div
           ref={canvasMountRef}
           data-testid="showcase-canvas-mount"
-          className="absolute inset-0 z-[1] h-full w-full"
+          className="absolute inset-0 h-full w-full"
+        />
+
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-0 z-[1]"
+          style={{
+            background: 'radial-gradient(560px circle at var(--pointer-x, 50%) var(--pointer-y, 50%), rgba(105, 116, 190, 0.10), transparent 62%)',
+            mixBlendMode: 'screen',
+          }}
         />
 
         {/* Centralized typography aligned inside orbital ring */}
