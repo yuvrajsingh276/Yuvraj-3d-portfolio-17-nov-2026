@@ -343,23 +343,28 @@ export class ShowcaseStage {
     const radiusX = isPortrait ? 4.7 : 7.55;
     const radiusY = isPortrait ? 5.2 : 3.25;
     const tilt = (20 * Math.PI) / 180;
-    const points = Array.from({ length: 256 }, (_, i) => {
-      const angle = (i / 256) * Math.PI * 2;
-      const orbitY = Math.sin(angle) * radiusY;
+    const pointOnOrbit = (angle: number, scale = 1) => {
+      const orbitY = Math.sin(angle) * radiusY * scale;
       return new THREE.Vector3(
-        Math.cos(angle) * radiusX,
+        Math.cos(angle) * radiusX * scale,
         orbitY * Math.cos(tilt),
         orbitY * Math.sin(tilt)
       );
-    });
+    };
+    const points = Array.from({ length: 256 }, (_, i) =>
+      pointOnOrbit((i / 256) * Math.PI * 2)
+    );
     const curve = new THREE.CatmullRomCurve3(points, true, 'centripetal', 0.35);
-    const tubularSegments = 768;
-    const radialSegments = 4;
 
-    const makeGradientTube = (radius: number) => {
-      const geometry = new THREE.TubeGeometry(curve, tubularSegments, radius, radialSegments, true);
+    const makeGradientTube = (
+      path: THREE.Curve<THREE.Vector3>,
+      radius: number,
+      tubularSegments: number,
+      closed: boolean
+    ) => {
+      const geometry = new THREE.TubeGeometry(path, tubularSegments, radius, 4, closed);
       const colors = new Float32Array(geometry.getAttribute('position').count * 3);
-      const verticesPerRing = radialSegments + 1;
+      const verticesPerRing = 5;
       for (let i = 0; i < colors.length / 3; i++) {
         const t = Math.floor(i / verticesPerRing) / tubularSegments;
         const [r, g, b] = sampleYellowRedOrangeBlueGradient(t);
@@ -371,8 +376,9 @@ export class ShowcaseStage {
       return geometry;
     };
 
+    // Main orbital path stays fixed; opaque icons cover it through depth testing.
     const aura = new THREE.Mesh(
-      makeGradientTube(0.010),
+      makeGradientTube(curve, 0.010, 768, true),
       new THREE.MeshBasicMaterial({
         vertexColors: true,
         transparent: true,
@@ -383,7 +389,7 @@ export class ShowcaseStage {
       })
     );
     const core = new THREE.Mesh(
-      makeGradientTube(0.0022),
+      makeGradientTube(curve, 0.0022, 768, true),
       new THREE.MeshBasicMaterial({
         vertexColors: true,
         transparent: true,
@@ -396,8 +402,34 @@ export class ShowcaseStage {
     aura.renderOrder = -20;
     core.renderOrder = -19;
     this.orbitGuideRing.add(aura, core);
-  }
 
+    // Fine broken accents follow the same tilted ellipse without forming full rings.
+    const accentArcs = [
+      { start: 0.06, end: 0.27, scale: 1.018, radius: 0.00125, opacity: 0.13 },
+      { start: 0.39, end: 0.57, scale: 0.986, radius: 0.00105, opacity: 0.11 },
+      { start: 0.72, end: 0.91, scale: 1.032, radius: 0.00115, opacity: 0.12 },
+    ];
+    accentArcs.forEach((arc, index) => {
+      const arcPoints = Array.from({ length: 52 }, (_, i) => {
+        const t = arc.start + (arc.end - arc.start) * (i / 51);
+        return pointOnOrbit(t * Math.PI * 2, arc.scale);
+      });
+      const arcCurve = new THREE.CatmullRomCurve3(arcPoints, false, 'centripetal', 0.35);
+      const line = new THREE.Mesh(
+        makeGradientTube(arcCurve, arc.radius, 96, false),
+        new THREE.MeshBasicMaterial({
+          vertexColors: true,
+          transparent: true,
+          opacity: arc.opacity,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          depthTest: true,
+        })
+      );
+      line.renderOrder = -18 + index;
+      this.orbitGuideRing?.add(line);
+    });
+  }
   private initScatterBurstParticles() {
     const count = 36;
     const positions = new Float32Array(count * 3);
@@ -1102,7 +1134,7 @@ export class ShowcaseStage {
         } else {
           gt.material.emissiveIntensity = Math.max(
             0.02,
-            gt.baseEmissive * bloomCfg.coloredEmissiveScale + Math.max(0, nextState.glowBoost) * 0.22
+            gt.baseEmissive * bloomCfg.coloredEmissiveScale + Math.max(0, nextState.glowBoost) * 0.34
           );
         }
       }
@@ -1110,7 +1142,7 @@ export class ShowcaseStage {
       const halo = this.iconHalos.get(id);
       if (halo) {
         // Persistent soft bloom for every icon, with a subtle extra lift on hover.
-        halo.material.opacity = 0.34 + Math.max(0, nextState.glowBoost) * 0.12;
+        halo.material.opacity = 0.34 + Math.max(0, nextState.glowBoost) * 0.22;
         halo.visible = true;
       }
     }
