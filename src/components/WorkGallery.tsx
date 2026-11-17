@@ -138,7 +138,7 @@ export function WorkGallery() {
     drag.current = { active: true, moved: false, startX: event.clientX, scrollLeft: track.scrollLeft };
     setDragging(true);
   };
-  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+  const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!drag.current.active || !trackRef.current) return;
     const delta = event.clientX - drag.current.startX;
     if (Math.abs(delta) > 5) drag.current.moved = true;
