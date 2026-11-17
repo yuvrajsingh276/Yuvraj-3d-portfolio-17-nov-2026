@@ -21,57 +21,53 @@ const projects: Project[] = [
     coverImage: 'cover-01', heroImage: 'hero-01',
     galleryImages: ['frame-01-a', 'frame-01-b', 'frame-01-c', 'frame-01-d'],
     description: 'A cinematic visual direction exploring the next generation of connected family healthcare.',
-    accent: '#a78bfa', mood: 'violet',
+    accent: '#ff7777', mood: 'red',
   },
   {
     id: '02', title: 'Gemora — The Art of Detail', category: 'PRODUCT VISUALIZATION',
     coverImage: 'cover-02', heroImage: 'hero-02',
     galleryImages: ['frame-02-a', 'frame-02-b', 'frame-02-c'],
     description: 'A refined product story built around material, light, precision and elegant composition.',
-    accent: '#e5bd82', mood: 'gold',
+    accent: '#ffe36a', mood: 'yellow',
   },
   {
     id: '03', title: 'Beyond the Frame', category: 'MOTION DESIGN',
     coverImage: 'cover-03', heroImage: 'hero-03',
     galleryImages: ['frame-03-a', 'frame-03-b', 'frame-03-c', 'frame-03-d'],
     description: 'An exploration of rhythm, graphic form and dimensional motion for a bold visual identity.',
-    accent: '#7dd3fc', mood: 'blue',
+    accent: '#65baff', mood: 'blue',
   },
   {
     id: '04', title: 'Digital Dimensions', category: 'BRAND EXPERIENCE',
     coverImage: 'cover-04', heroImage: 'hero-04',
     galleryImages: ['frame-04-a', 'frame-04-b', 'frame-04-c'],
     description: 'A visual system that brings brand language into a tactile, immersive digital space.',
-    accent: '#f0a6c8', mood: 'rose',
+    accent: '#ff9acb', mood: 'pink',
   },
   {
     id: '05', title: 'The Shape of Tomorrow', category: '3D ART DIRECTION',
     coverImage: 'cover-05', heroImage: 'hero-05',
     galleryImages: ['frame-05-a', 'frame-05-b', 'frame-05-c', 'frame-05-d'],
     description: 'A study in atmosphere, sculptural form and cinematic lighting.',
-    accent: '#9bd5b6', mood: 'mint',
+    accent: '#64e39b', mood: 'green',
   },
 ];
 
 const palettes: Record<string, string> = {
-  violet: 'radial-gradient(ellipse at 70% 24%,rgba(196,181,253,.65),transparent 28%),radial-gradient(ellipse at 30% 72%,rgba(91,52,154,.8),transparent 42%),linear-gradient(145deg,#25203b,#090b17 72%)',
-  gold: 'radial-gradient(ellipse at 62% 30%,rgba(246,214,158,.72),transparent 25%),radial-gradient(ellipse at 30% 78%,rgba(134,89,49,.65),transparent 45%),linear-gradient(145deg,#30251d,#0b0b10 72%)',
-  blue: 'radial-gradient(ellipse at 68% 26%,rgba(125,211,252,.65),transparent 27%),radial-gradient(ellipse at 28% 74%,rgba(37,99,150,.72),transparent 43%),linear-gradient(145deg,#172b3b,#080c16 72%)',
-  rose: 'radial-gradient(ellipse at 65% 28%,rgba(249,168,212,.62),transparent 26%),radial-gradient(ellipse at 28% 76%,rgba(143,61,112,.68),transparent 44%),linear-gradient(145deg,#302034,#0b0a13 72%)',
-  mint: 'radial-gradient(ellipse at 65% 26%,rgba(167,243,208,.6),transparent 27%),radial-gradient(ellipse at 30% 76%,rgba(43,119,103,.65),transparent 45%),linear-gradient(145deg,#1c302d,#080d12 72%)',
+  red: 'linear-gradient(145deg,#ff4545 0%,#c91536 100%)',
+  yellow: 'linear-gradient(145deg,#ffe36a 0%,#e9a91b 100%)',
+  green: 'linear-gradient(145deg,#4ed68a 0%,#087c58 100%)',
+  blue: 'linear-gradient(145deg,#57b9ff 0%,#2456c7 100%)',
+  pink: 'linear-gradient(145deg,#ff8fc8 0%,#bd3e91 100%)',
+  orange: 'linear-gradient(145deg,#ffad57 0%,#e35b28 100%)',
+  purple: 'linear-gradient(145deg,#b49aff 0%,#6642c8 100%)',
+  teal: 'linear-gradient(145deg,#64e1d1 0%,#168c91 100%)',
 };
+const artworkColors = ['red', 'yellow', 'green', 'blue', 'pink', 'orange', 'purple', 'teal'];
 
 function Artwork({ mood, label, className = '' }: { mood: string; label: string; className?: string }) {
-  return (
-    <div className={`relative isolate overflow-hidden ${className}`} style={{ background: palettes[mood] }}>
-      <div aria-hidden="true" className="absolute inset-[12%] rounded-[48%] border border-white/15 opacity-60 rotate-[-24deg]" />
-      <div aria-hidden="true" className="absolute left-[22%] top-[18%] h-[52%] w-[58%] rounded-[42%] border border-white/20 bg-white/[0.035] shadow-[0_0_80px_rgba(255,255,255,.08)] backdrop-blur-[2px] rotate-[28deg]" />
-      <div aria-hidden="true" className="absolute bottom-[16%] right-[12%] h-[24%] w-[34%] rounded-full border border-white/20 bg-black/20 blur-[1px]" />
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent p-4 sm:p-5">
-        <span className="text-[9px] font-medium uppercase tracking-[.28em] text-white/55">{label}</span>
-      </div>
-    </div>
-  );
+  const color = palettes[mood] ? mood : artworkColors[Math.abs([...label].reduce((sum, char) => sum + char.charCodeAt(0), 0)) % artworkColors.length];
+  return <div aria-label={label} role="img" className={`relative overflow-hidden ${className}`} style={{ background: palettes[color] }} />;
 }
 
 export function WorkGallery() {
@@ -190,12 +186,12 @@ export function WorkGallery() {
               whileFocus={reduceMotion ? undefined : { y: -8, scale: 1.025 }}
               transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
               aria-label={`Open project: ${project.title}`}
-              className={`group relative w-[64vw] max-w-[310px] min-w-[220px] shrink-0 overflow-hidden rounded-[5px] border border-white/[.12] bg-[#10121b] text-left shadow-[0_18px_55px_rgba(0,0,0,.32)] outline-none transition-[filter,border-color,opacity] duration-500 opacity-80 group-hover/gallery:opacity-45 hover:!opacity-100 focus-visible:!opacity-100 hover:border-white/35 focus-visible:border-violet-300 focus-visible:ring-2 focus-visible:ring-violet-300/70 ${index % 2 === 0 ? 'mt-0' : 'mt-14'}`}
+              className={`group relative w-[126px] min-w-[126px] sm:w-[150px] sm:min-w-[150px] hover:w-[250px] hover:min-w-[250px] sm:hover:w-[310px] sm:hover:min-w-[310px] focus-visible:w-[250px] focus-visible:min-w-[250px] sm:focus-visible:w-[310px] sm:focus-visible:min-w-[310px] shrink-0 overflow-hidden rounded-[5px] border border-white/[.12] bg-[#10121b] text-left shadow-[0_18px_55px_rgba(0,0,0,.32)] outline-none transition-[width,min-width,filter,border-color,opacity] duration-500 ease-[cubic-bezier(.22,1,.36,1)] opacity-80 group-hover/gallery:opacity-45 hover:!opacity-100 focus-visible:!opacity-100 hover:border-white/35 focus-visible:border-violet-300 focus-visible:ring-2 focus-visible:ring-violet-300/70 ${index % 2 === 0 ? 'mt-0' : 'mt-14'}`}
               style={{ aspectRatio: '0.69' }}
             >
               <Artwork mood={project.mood} label={`PROJECT ${project.id}`} className="absolute inset-0 h-full w-full transition-transform duration-700 group-hover:scale-[1.04]" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/5 to-black/5 opacity-80 transition-opacity duration-500 group-hover:opacity-95" />
-              <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100" />
+              <div className="absolute inset-x-0 bottom-0 p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100 sm:p-5">
                 <p className="mb-2 text-[8px] font-semibold tracking-[.25em] text-white/55 sm:text-[9px]">{project.category}</p>
                 <h3 className="max-w-[15ch] text-lg font-medium leading-tight tracking-[-.025em] text-white sm:text-xl">{project.title}</h3>
                 <span className="mt-4 flex items-center gap-2 text-[9px] uppercase tracking-[.2em] text-white/55 transition-colors group-hover:text-white">Explore project <ArrowUpRight size={12} /></span>
@@ -252,7 +248,7 @@ export function WorkGallery() {
                         className={`relative overflow-hidden border border-white/10 bg-[#11131c] ${spans[index % spans.length]}`}
                         style={{ aspectRatio: index % 3 === 1 ? '4 / 5' : index % 3 === 2 ? '5 / 4' : '16 / 10' }}
                       >
-                        <Artwork mood={activeProject.mood} label={`FRAME 0${index + 1}`} className="h-full w-full min-h-[240px]" />
+                        <Artwork mood={artworkColors[(projects.findIndex((project) => project.id === activeProject.id) * 3 + index) % artworkColors.length]} label={`FRAME 0${index + 1}`} className="h-full w-full min-h-[240px]" />
                       </motion.div>
                     );
                   })}
