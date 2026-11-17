@@ -14,8 +14,6 @@ export default function App() {
   const [selectedTool, setSelectedTool] = useState<ToolSpec | null>(null);
   const [motionPaused, setMotionPaused] = useState(false);
   const [contextLost, setContextLost] = useState(false);
-  const [bloomIntensity, setBloomIntensity] = useState(0.42);
-  const [dofStrength, setDofStrength] = useState(0.55);
 
   useEffect(() => {
     const container = canvasMountRef.current;
@@ -26,26 +24,12 @@ export default function App() {
       onSelectChange: (tool) => setSelectedTool(tool),
       onContextLostChange: (lost) => setContextLost(lost),
     });
-    stage.setBloomIntensity(0.42);
-    stage.setDofStrength(0.55);
     stageRef.current = stage;
 
     return () => {
       stage.dispose();
       stageRef.current = null;
     };
-  }, []);
-
-  const handleBloomChange = useCallback((nextIntensity: number) => {
-    const clamped = Math.max(0, Math.min(1, nextIntensity));
-    setBloomIntensity(clamped);
-    stageRef.current?.setBloomIntensity(clamped);
-  }, []);
-
-  const handleDofChange = useCallback((nextStrength: number) => {
-    const clamped = Math.max(0, Math.min(1, nextStrength));
-    setDofStrength(clamped);
-    stageRef.current?.setDofStrength(clamped);
   }, []);
 
   const handleToggleMotion = useCallback(() => {
@@ -74,24 +58,32 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [handleToggleMotion]);
 
-  const bloomPercent = Math.round(bloomIntensity * 100);
-  const dofPercent = Math.round(dofStrength * 100);
-
   return (
     <MotionConfig reducedMotion="user">
       <main
-        className="relative h-screen w-screen overflow-hidden bg-[#05060c]"
+        onPointerMove={(e) => {
+          e.currentTarget.style.setProperty('--pointer-x', e.clientX + 'px');
+          e.currentTarget.style.setProperty('--pointer-y', e.clientY + 'px');
+        }}
+        className="relative h-screen w-screen overflow-hidden bg-[#080b18]"
         data-selected-tool={selectedTool?.id ?? 'none'}
         data-hovered-tool={hoveredTool?.id ?? 'none'}
         data-motion-paused={String(motionPaused)}
-        data-bloom-intensity={bloomPercent}
-        data-dof-strength={dofPercent}
       >
         {/* Isolated WebGL canvas mount container (never re-rendered on HUD state updates) */}
         <div
           ref={canvasMountRef}
           data-testid="showcase-canvas-mount"
           className="absolute inset-0 h-full w-full"
+        />
+
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-0 z-[1]"
+          style={{
+            background: 'radial-gradient(560px circle at var(--pointer-x, 50%) var(--pointer-y, 50%), rgba(105, 116, 190, 0.10), transparent 62%)',
+            mixBlendMode: 'screen',
+          }}
         />
 
         {/* Centralized typography aligned inside orbital ring */}
@@ -156,63 +148,6 @@ export default function App() {
               className="h-3.5 w-px bg-gradient-to-b from-[#6366f1]/80 to-transparent"
             />
           </motion.div>
-        )}
-
-        {/* Non-intrusive solid-slate studio optical controls (Bloom + Depth of Field) */}
-        {!contextLost && (
-          <div
-            className="fixed top-4 right-4 sm:top-auto sm:bottom-5 sm:right-5 z-20 flex items-center gap-3 rounded-xl border border-[#23273d] bg-[#0b0d18]/95 px-3 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
-            role="group"
-            aria-label="Studio optical post-processing controls"
-          >
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="bloom-intensity-slider"
-                className="text-[11px] font-medium tracking-[0.12em] uppercase text-[#9aa4bc] select-none"
-              >
-                Bloom
-              </label>
-              <input
-                id="bloom-intensity-slider"
-                type="range"
-                min={0}
-                max={100}
-                step={1}
-                value={bloomPercent}
-                onChange={(e) => handleBloomChange(Number(e.target.value) / 100)}
-                aria-label="Bloom glow intensity"
-                aria-valuetext={`${bloomPercent}%`}
-                className="h-1 w-14 sm:w-20 cursor-pointer accent-[#6366f1]"
-              />
-              <span className="min-w-[32px] text-right font-mono text-[11px] tabular-nums text-[#dbe3f5]">
-                {bloomPercent}%
-              </span>
-            </div>
-            <span aria-hidden="true" className="h-3.5 w-px bg-[#23273d]" />
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="dof-strength-slider"
-                className="text-[11px] font-medium tracking-[0.12em] uppercase text-[#9aa4bc] select-none"
-              >
-                DOF
-              </label>
-              <input
-                id="dof-strength-slider"
-                type="range"
-                min={0}
-                max={100}
-                step={1}
-                value={dofPercent}
-                onChange={(e) => handleDofChange(Number(e.target.value) / 100)}
-                aria-label="Depth of field blur strength"
-                aria-valuetext={`${dofPercent}%`}
-                className="h-1 w-14 sm:w-20 cursor-pointer accent-[#8b5cf6]"
-              />
-              <span className="min-w-[32px] text-right font-mono text-[11px] tabular-nums text-[#dbe3f5]">
-                {dofPercent}%
-              </span>
-            </div>
-          </div>
         )}
 
         {/* WebGL Context Lost fallback HUD only (clicking icons scatters without revealing text) */}
