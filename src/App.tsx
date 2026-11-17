@@ -135,12 +135,12 @@ export default function App() {
               transition={{ duration: 0.72, ease: HERO_EASE }}
               className="pointer-events-none fixed inset-0 z-10 flex items-center justify-center px-6"
             >
-              <div className="max-w-[240px] sm:max-w-[560px] text-center overflow-visible">
+              <div className="w-full max-w-[92vw] sm:max-w-[760px] lg:max-w-[min(92vw,1100px)] text-center overflow-visible">
                 <motion.h1
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.85, delay: 0.08, ease: HERO_EASE }}
-                  className="hero-gradient-text overflow-visible pb-[0.06em] text-[clamp(2.5rem,6.2vw,5.75rem)] font-bold tracking-[0.04em] leading-[1.12]"
+                  className="hero-gradient-text overflow-visible whitespace-nowrap pb-[0.06em] text-[clamp(2.1rem,6.2vw,5.75rem)] font-bold tracking-[0.04em] leading-[1.12]"
                 >
                   YUVRAJ SINGH
                 </motion.h1>
