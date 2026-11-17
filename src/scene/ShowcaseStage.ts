@@ -515,7 +515,7 @@ export class ShowcaseStage {
 
   private attachIconHalo(entry: BuiltIconEntry) {
     // Small, local accent light makes each icon catch light at its own position.
-    const localLight = new THREE.PointLight(entry.spec.accentHex, 2.2, 3.2, 2);
+    const localLight = new THREE.PointLight(entry.spec.accentHex, 2.6, 3.6, 2);
     localLight.position.set(0, 0, 0.32);
     entry.bodyGroup.add(localLight);
 
@@ -523,13 +523,13 @@ export class ShowcaseStage {
       map: this.textures.glowSprite,
       color: entry.spec.accentHex,
       transparent: true,
-      opacity: 0.34,
+      opacity: 0.42,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       depthTest: false,
     });
     const sprite = new THREE.Sprite(haloMat);
-    sprite.scale.set(2.35, 2.35, 1);
+    sprite.scale.set(2.55, 2.55, 1);
     sprite.position.set(0, 0, -0.18);
     sprite.visible = true;
     entry.bodyGroup.add(sprite);
