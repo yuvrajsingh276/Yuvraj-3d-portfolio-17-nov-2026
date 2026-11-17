@@ -330,11 +330,11 @@ export function computeOrbitalLayout(
   angleOffsetDeg = 0
 ): OrbitalSlot[] {
   const isPortrait = aspect < 0.85;
-  // One shared, fixed 3D oval. Its plane is tilted 45 degrees around X.
+  // One shared, fixed 3D oval. Its plane is tilted 20 degrees around X.
   // Every icon uses the same radii and evenly spaced catalog angles.
   const radiusX = isPortrait ? 4.7 : 7.55;
   const radiusY = isPortrait ? 5.2 : 3.25;
-  const tilt = Math.PI / 4;
+  const tilt = (20 * Math.PI) / 180;
 
   return tools.map((tool, index) => {
     const rad = ((tool.angleDeg + angleOffsetDeg) * Math.PI) / 180;
