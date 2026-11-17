@@ -60,3 +60,19 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+
+/* Seamless, lightweight horizontal experience ticker */
+@keyframes experience-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.experience-track {
+  animation: experience-scroll 34s linear infinite;
+  will-change: transform;
+}
+.experience-track.is-paused { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .experience-track { animation: none; }
+  .experience-marquee { overflow-x: auto; }
+}
