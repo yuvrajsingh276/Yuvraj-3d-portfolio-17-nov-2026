@@ -83,28 +83,7 @@ export default function App() {
       >
         <ParticleWaveBackground />
 
-        {/* Centered floating navigation */}
-        <nav
-          aria-label="Main navigation"
-          className="portfolio-nav fixed left-1/2 top-4 z-30 -translate-x-1/2 sm:top-5"
-        >
-          <div className="portfolio-nav-list flex items-center gap-1 rounded-full border border-white/[0.09] bg-[#0a1222]/75 p-1.5 shadow-[0_8px_36px_rgba(0,0,0,0.22)] backdrop-blur-xl">
-            {[
-              { label: 'Home', href: '#home' },
-              { label: 'Work', href: '#work' },
-              { label: 'Experience', href: '#experience' },
-              { label: 'About', href: '#about' },
-            ].map((item) => (
-              <a
-                key={item.label}
-                href={item.href}
-                className="portfolio-nav-link rounded-full px-3 py-2.5 text-[10px] font-medium tracking-[0.08em] text-[#aab6cb] transition-all duration-300 hover:bg-white/[0.07] hover:text-white sm:px-5 sm:text-[12px]"
-              >
-                {item.label}
-              </a>
-            ))}
-          </div>
-        </nav>
+
 
         {/* Existing interactive WebGL scene stays above the lightweight background */}
         <div
@@ -194,6 +173,29 @@ export default function App() {
           onResetView={handleResetView}
         />
       </main>
+
+      {/* Centered floating navigation */}
+      <nav
+        aria-label="Main navigation"
+        className="portfolio-nav fixed left-1/2 top-4 z-30 -translate-x-1/2 sm:top-5"
+      >
+        <div className="portfolio-nav-list flex items-center gap-1 rounded-full border border-white/[0.09] bg-[#0a1222]/75 p-1.5 shadow-[0_8px_36px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+          {[
+            { label: 'Home', href: '#home' },
+            { label: 'Work', href: '#work' },
+            { label: 'Experience', href: '#experience' },
+            { label: 'About', href: '#about' },
+          ].map((item) => (
+            <a
+            key={item.label}
+            href={item.href}
+            className="portfolio-nav-link rounded-full px-3 py-2.5 text-[10px] font-medium tracking-[0.08em] text-[#aab6cb] transition-all duration-300 hover:bg-white/[0.07] hover:text-white sm:px-5 sm:text-[12px]"
+            >
+            {item.label}
+            </a>
+          ))}
+        </div>
+      </nav>
 
       {/* Video section slides over the pinned hero as the visitor scrolls */}
       <section
