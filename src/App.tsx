@@ -67,13 +67,14 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
+      <div className="relative isolate min-h-screen bg-[#010207]">
       <main
         id="home"
         onPointerMove={(e) => {
           e.currentTarget.style.setProperty('--pointer-x', e.clientX + 'px');
           e.currentTarget.style.setProperty('--pointer-y', e.clientY + 'px');
         }}
-        className="relative isolate h-screen w-screen overflow-hidden bg-[#010207]"
+        className="sticky top-0 z-0 h-screen w-screen overflow-hidden bg-[#010207]"
         data-selected-tool={selectedTool?.id ?? 'none'}
         data-hovered-tool={hoveredTool?.id ?? 'none'}
         data-motion-paused={String(motionPaused)}
@@ -191,6 +192,42 @@ export default function App() {
           onResetView={handleResetView}
         />
       </main>
+
+      {/* Video section slides over the pinned hero as the visitor scrolls */}
+      <section
+        id="about"
+        aria-label="Video introduction"
+        className="relative z-20 flex min-h-screen w-full items-center justify-center border-t border-white/[0.06] bg-[#070912] px-6 py-24"
+      >
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="mb-8 flex items-center justify-between">
+            <span className="text-[11px] font-medium uppercase tracking-[0.3em] text-violet-300/70">01 / INTRODUCTION</span>
+            <span className="text-[10px] uppercase tracking-[0.24em] text-white/30">VIDEO</span>
+          </div>
+          <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(ellipse_at_50%_45%,rgba(111,76,190,0.16),transparent_58%),linear-gradient(135deg,#111525,#080a12_65%,#160d19)] shadow-[0_30px_100px_rgba(0,0,0,0.45)]">
+            <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
+            <div className="relative flex flex-col items-center gap-3">
+              <span className="text-[clamp(2.5rem,8vw,6rem)] font-semibold tracking-[0.18em] text-white/80">VIDEO</span>
+              <span className="text-[10px] uppercase tracking-[0.28em] text-white/35">Video placeholder</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Work section placeholder; visual treatment and animation to be designed next */}
+      <section
+        id="work"
+        aria-label="Selected work"
+        className="relative z-20 flex min-h-screen w-full items-center justify-center border-t border-white/[0.06] bg-[#03050b] px-6 py-24"
+      >
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="mb-8 text-[11px] font-medium uppercase tracking-[0.3em] text-violet-300/70">02 / SELECTED PROJECTS</div>
+          <div className="flex min-h-[55vh] items-center justify-center rounded-2xl border border-white/[0.08] bg-[radial-gradient(ellipse_at_50%_50%,rgba(70,80,130,0.13),transparent_60%),#080b14]">
+            <span className="text-[clamp(3rem,11vw,8rem)] font-semibold tracking-[0.2em] text-white/75">WORK</span>
+          </div>
+        </div>
+      </section>
+      </div>
     </MotionConfig>
   );
 }
