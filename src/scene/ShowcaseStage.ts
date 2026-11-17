@@ -342,13 +342,23 @@ export class ShowcaseStage {
     const slots = computeOrbitalLayout(TOOLS_CATALOG, aspect, angleOffsetDeg);
     if (slots.length < 3) return;
 
-    // Same x/y curve as every icon; only a small depth offset keeps the line behind them.
-    const points = slots.map((slot) =>
-      new THREE.Vector3(slot.position[0], slot.position[1], slot.position[2] - 0.34)
-    );
-    const curve = new THREE.CatmullRomCurve3(points, true, 'centripetal', 0.35);
-    const tubularSegments = Math.max(360, slots.length * 64);
-    const radialSegments = 5;
+    // Keep the guide as a clean, wide oval behind the icon arrangement.
+    const centerX = slots.reduce((sum, slot) => sum + slot.position[0], 0) / slots.length;
+    const centerY = slots.reduce((sum, slot) => sum + slot.position[1], 0) / slots.length;
+    const centerZ = slots.reduce((sum, slot) => sum + slot.position[2], 0) / slots.length - 0.34;
+    const radiusX = Math.max(...slots.map((slot) => Math.abs(slot.position[0] - centerX))) * 1.08;
+    const radiusY = Math.max(...slots.map((slot) => Math.abs(slot.position[1] - centerY))) * 1.08;
+    const ovalPoints = Array.from({ length: 160 }, (_, i) => {
+      const angle = (i / 160) * Math.PI * 2;
+      return new THREE.Vector3(
+        centerX + Math.cos(angle) * radiusX,
+        centerY + Math.sin(angle) * radiusY,
+        centerZ
+      );
+    });
+    const curve = new THREE.CatmullRomCurve3(ovalPoints, true, 'centripetal', 0.35);
+    const tubularSegments = 640;
+    const radialSegments = 4;
 
     const makeGradientTube = (radius: number) => {
       const geometry = new THREE.TubeGeometry(curve, tubularSegments, radius, radialSegments, true);
@@ -367,18 +377,18 @@ export class ShowcaseStage {
 
     // Very slim soft aura beneath an even finer, crisp gradient core.
     const aura = new THREE.Mesh(
-      makeGradientTube(0.028),
+      makeGradientTube(0.014),
       new THREE.MeshBasicMaterial({
         vertexColors: true,
         transparent: true,
-        opacity: 0.34,
+        opacity: 0.48,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         depthTest: true,
       })
     );
     const core = new THREE.Mesh(
-      makeGradientTube(0.008),
+      makeGradientTube(0.0035),
       new THREE.MeshBasicMaterial({
         vertexColors: true,
         transparent: true,
