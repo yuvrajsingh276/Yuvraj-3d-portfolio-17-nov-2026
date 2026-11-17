@@ -841,7 +841,7 @@ export class ShowcaseStage {
   public applyLightingPreset(presetId: LightingPresetId) {
     const preset = LIGHTING_PRESETS[presetId];
     this.activePreset = preset;
-    this.scene.background = new THREE.Color('#080b18');
+    this.scene.background = null;
     this.scene.fog = new THREE.FogExp2('#080b18', 0.006);
 
     this.keyLight.color.set(preset.keyColor);
