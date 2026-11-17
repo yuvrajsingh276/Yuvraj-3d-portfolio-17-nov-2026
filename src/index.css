@@ -193,3 +193,37 @@ section[id], div[id="work"] { scroll-margin-top: 5.5rem; }
 .portfolio-heading-section { font-size: clamp(var(--portfolio-type-lg), 5.5vw, var(--portfolio-type-xl)); }
 .portfolio-heading-display { font-size: clamp(var(--portfolio-type-lg), 7.5vw, var(--portfolio-type-2xl)); }
 .portfolio-heading-company { font-size: clamp(var(--portfolio-type-lg), 8vw, var(--portfolio-type-xl)); }
+
+
+/* Award-level polish: compact responsive rhythm and touch-first interactions */
+.experience-marquee { touch-action: pan-y; cursor: grab; }
+.experience-marquee:active { cursor: grabbing; }
+.experience-track { width: 300%; will-change: transform; }
+.experience-track > article { min-width: 0; }
+.experience-track:focus-visible { outline: 1px solid rgba(196,181,253,.5); outline-offset: -4px; }
+@media (max-width: 640px) {
+  .portfolio-nav { top: max(.5rem, env(safe-area-inset-top)); }
+  .portfolio-nav-list { gap: .1rem; padding: .25rem; }
+  .portfolio-nav-link { min-height: 2.35rem; padding-inline: .62rem; font-size: .61rem; }
+  .work-exhibition { padding-top: 3.25rem; padding-bottom: 3.25rem; }
+  .work-exhibition > div > div:first-child { margin-bottom: 1.25rem; }
+  .work-gallery-track { gap: .75rem; padding-inline: 1.25rem; padding-top: .75rem; padding-bottom: 1.25rem; }
+  .work-gallery-track > button { width: 7.5rem; min-width: 7.5rem; }
+  .work-gallery-track > button:nth-child(even) { margin-top: 1.5rem; }
+  .experience-stage { min-height: 690px; min-height: min(100svh, 780px); padding-block: 2.5rem; }
+  .experience-track > article { padding-inline: 1.25rem; }
+  .about-overlay > div { padding-top: 4rem; padding-bottom: 4rem; }
+  .about-overlay .portfolio-heading-display { font-size: clamp(2.2rem, 11vw, 3.6rem); }
+}
+@media (max-width: 380px) {
+  .portfolio-nav-link { padding-inline: .48rem; font-size: .57rem; }
+  .experience-track > article h3 { font-size: clamp(2rem, 10vw, 2.8rem); }
+}
+@media (min-width: 641px) and (max-width: 1024px) {
+  .work-exhibition { padding-block: 4rem; }
+  .experience-track > article { padding-inline: 7vw; }
+  .about-overlay > div { padding-block: 5.5rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .experience-track { transition-duration: 0ms !important; }
+}
