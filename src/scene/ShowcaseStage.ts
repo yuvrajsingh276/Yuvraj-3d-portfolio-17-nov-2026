@@ -146,8 +146,8 @@ export class ShowcaseStage {
   private motionPaused = false;
   private autoOrbit = false;
   private reducedMotion = false;
-  private bloomIntensity = 0.42;
-  private dofStrength = 0.55;
+  private bloomIntensity = 0;
+  private dofStrength = 0;
   private currentFocusWorldZ = 0.35;
   private iconHalos = new Map<string, THREE.Sprite>();
 
@@ -209,8 +209,8 @@ export class ShowcaseStage {
     this.container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#05060c');
-    this.scene.fog = new THREE.FogExp2('#05060c', 0.02);
+    this.scene.background = new THREE.Color('#080b18');
+    this.scene.fog = new THREE.FogExp2('#080b18', 0.012);
 
     const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
     this.scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
@@ -837,8 +837,8 @@ export class ShowcaseStage {
   public applyLightingPreset(presetId: LightingPresetId) {
     const preset = LIGHTING_PRESETS[presetId];
     this.activePreset = preset;
-    this.scene.background = new THREE.Color('#040408');
-    this.scene.fog = new THREE.FogExp2('#040408', 0.006);
+    this.scene.background = new THREE.Color('#080b18');
+    this.scene.fog = new THREE.FogExp2('#080b18', 0.006);
 
     this.keyLight.color.set(preset.keyColor);
     this.keyLight.intensity = preset.keyIntensity;
