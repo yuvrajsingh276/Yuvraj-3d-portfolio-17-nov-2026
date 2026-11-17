@@ -72,9 +72,8 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="relative isolate min-h-screen bg-[#010207]">
+      <div id="home" className="relative isolate min-h-screen bg-[#010207]">
       <main
-        id="home"
         onPointerMove={(e) => {
           e.currentTarget.style.setProperty('--pointer-x', e.clientX + 'px');
           e.currentTarget.style.setProperty('--pointer-y', e.clientY + 'px');
