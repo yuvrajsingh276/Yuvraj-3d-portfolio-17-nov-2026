@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
 import { ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUpRight, Mail, Pause, Play } from 'lucide-react';
 
 const experience = [
@@ -31,14 +32,15 @@ export function ExperienceAbout() {
 
   useEffect(() => {
     if (!started || paused || hovered || activeIndex === experience.length - 1) return;
-    const timer = window.setInterval(() => {
-      setActiveIndex(current => {
-        const next = Math.min(current + 1, experience.length - 1);
-        if (next === experience.length - 1) setPaused(true);
-        return next;
-      });
+    const timer = window.setTimeout(() => {
+      if (activeIndex >= experience.length - 2) {
+        setActiveIndex(experience.length - 1);
+        setPaused(true);
+      } else {
+        setActiveIndex(current => Math.min(current + 1, experience.length - 1));
+      }
     }, 5600);
-    return () => window.clearInterval(timer);
+    return () => window.clearTimeout(timer);
   }, [started, paused, hovered, activeIndex]);
 
   const goTo = useCallback((index: number) => {
@@ -52,7 +54,7 @@ export function ExperienceAbout() {
     setPaused(value => !value);
   };
 
-  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     pointerStart.current = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
     setPaused(true);
