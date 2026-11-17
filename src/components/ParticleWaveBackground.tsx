@@ -36,11 +36,11 @@ export function ParticleWaveBackground() {
       seed = (seed * 16807) % 2147483647;
       return (seed - 1) / 2147483646;
     };
-    const particles: Particle[] = Array.from({ length: 1450 }, () => ({
+    const particles: Particle[] = Array.from({ length: 3200 }, () => ({
       x: random(),
       depth: random(),
       phase: random() * TAU,
-      size: 0.55 + random() * 0.75,
+      size: 0.65 + random() * 1.05,
       hue: random(),
     }));
 
@@ -64,38 +64,39 @@ export function ParticleWaveBackground() {
 
     const draw = (time: number) => {
       const gradient = ctx.createLinearGradient(0, 0, 0, height);
-      gradient.addColorStop(0, '#02040a');
-      gradient.addColorStop(0.56, '#02040a');
-      gradient.addColorStop(1, '#07132c');
+      gradient.addColorStop(0, '#07101f');
+      gradient.addColorStop(0.32, '#09152b');
+      gradient.addColorStop(0.68, '#0a1730');
+      gradient.addColorStop(1, '#071329');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, width, height);
 
       const centerX = width * (0.5 + (pointerX - 0.5) * 0.07);
-      const centerY = height * 0.82;
-      const aura = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, width * 0.72);
-      aura.addColorStop(0, 'rgba(56,189,248,0.12)');
-      aura.addColorStop(0.5, 'rgba(99,102,241,0.055)');
+      const centerY = height * 0.62;
+      const aura = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, width * 0.9);
+      aura.addColorStop(0, 'rgba(56,189,248,0.15)');
+      aura.addColorStop(0.5, 'rgba(99,102,241,0.085)');
       aura.addColorStop(1, 'rgba(7,19,44,0)');
       ctx.fillStyle = aura;
-      ctx.fillRect(0, height * 0.4, width, height * 0.6);
+      ctx.fillRect(0, 0, width, height);
 
       // Three restrained color batches keep the draw loop inexpensive.
       const colors = ['rgba(56,189,248,', 'rgba(129,140,248,', 'rgba(168,85,247,'];
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         const x = p.x * width;
-        const base = height * (0.72 + p.depth * 0.075);
-        const amplitude = height * (0.045 + p.depth * 0.065);
+        const base = height * (0.39 + p.depth * 0.34);
+        const amplitude = height * (0.035 + p.depth * 0.055);
         const wave = Math.sin(p.x * 9.2 + time * 0.52 + p.phase) * amplitude
           + Math.sin(p.x * 17.5 - time * 0.31 + p.phase * 0.55) * amplitude * 0.2;
         const y = base + wave + (pointerY - 0.5) * height * 0.018
           + (pointerX - 0.5) * (p.x - 0.5) * height * 0.028;
-        if (y < height * 0.43 || y > height + 5) continue;
+        if (y < height * 0.25 || y > height * 0.9) continue;
         const ridge = 0.5 + 0.5 * Math.sin(p.x * 9.2 + time * 0.52 + p.phase);
-        const alpha = 0.14 + ridge * 0.32 * (0.35 + p.depth * 0.65);
+        const alpha = 0.22 + ridge * 0.42 * (0.35 + p.depth * 0.65);
         const colorIndex = p.hue > 0.82 ? 2 : p.hue > 0.52 ? 1 : 0;
         ctx.fillStyle = colors[colorIndex] + alpha.toFixed(3) + ')';
-        const radius = p.size * (0.7 + p.depth * 0.35);
+        const radius = p.size * (0.75 + p.depth * 0.5);
         ctx.fillRect(x, y, radius, radius);
       }
 
