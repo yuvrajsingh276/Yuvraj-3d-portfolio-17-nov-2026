@@ -166,7 +166,7 @@ export function WorkGallery() {
 
         <div
           ref={trackRef}
-          className={`work-gallery-track no-scrollbar flex items-center gap-4 overflow-x-auto px-6 pb-8 pt-5 sm:gap-6 sm:px-10 lg:gap-8 lg:px-16 ${dragging ? 'cursor-grabbing select-none' : 'cursor-grab'}`}
+          className={`work-gallery-track group/gallery no-scrollbar flex items-center gap-4 overflow-x-auto px-6 pb-8 pt-5 sm:gap-6 sm:px-10 lg:gap-8 lg:px-16 ${dragging ? 'cursor-grabbing select-none' : 'cursor-grab'}`}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -184,7 +184,7 @@ export function WorkGallery() {
               whileFocus={reduceMotion ? undefined : { y: -8, scale: 1.025 }}
               transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
               aria-label={`Open project: ${project.title}`}
-              className={`group relative w-[64vw] max-w-[310px] min-w-[220px] shrink-0 overflow-hidden rounded-[5px] border border-white/[.12] bg-[#10121b] text-left shadow-[0_18px_55px_rgba(0,0,0,.32)] outline-none transition-[filter,border-color] duration-500 opacity-80 transition-opacity group-hover/gallery:opacity-45 hover:!opacity-100 focus-visible:!opacity-100 hover:border-white/35 focus-visible:border-violet-300 focus-visible:ring-2 focus-visible:ring-violet-300/70 ${index % 2 === 0 ? 'mt-0' : 'mt-14'}`}
+              className={`group relative w-[64vw] max-w-[310px] min-w-[220px] shrink-0 overflow-hidden rounded-[5px] border border-white/[.12] bg-[#10121b] text-left shadow-[0_18px_55px_rgba(0,0,0,.32)] outline-none transition-[filter,border-color,opacity] duration-500 opacity-80 group-hover/gallery:opacity-45 hover:!opacity-100 focus-visible:!opacity-100 hover:border-white/35 focus-visible:border-violet-300 focus-visible:ring-2 focus-visible:ring-violet-300/70 ${index % 2 === 0 ? 'mt-0' : 'mt-14'}`}
               style={{ aspectRatio: '0.69' }}
             >
               <Artwork mood={project.mood} label={`PROJECT ${project.id}`} className="absolute inset-0 h-full w-full transition-transform duration-700 group-hover:scale-[1.04]" />
