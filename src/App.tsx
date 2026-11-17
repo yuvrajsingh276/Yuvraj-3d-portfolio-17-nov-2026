@@ -86,9 +86,9 @@ export default function App() {
         {/* Centered floating navigation */}
         <nav
           aria-label="Main navigation"
-          className="fixed left-1/2 top-5 z-30 -translate-x-1/2"
+          className="portfolio-nav fixed left-1/2 top-4 z-30 -translate-x-1/2 sm:top-5"
         >
-          <div className="flex items-center gap-1 rounded-full border border-white/[0.09] bg-[#0a1222]/55 p-1.5 shadow-[0_8px_36px_rgba(0,0,0,0.22)]">
+          <div className="portfolio-nav-list flex items-center gap-1 rounded-full border border-white/[0.09] bg-[#0a1222]/75 p-1.5 shadow-[0_8px_36px_rgba(0,0,0,0.22)] backdrop-blur-xl">
             {[
               { label: 'Home', href: '#home' },
               { label: 'Work', href: '#work' },
@@ -98,7 +98,7 @@ export default function App() {
               <a
                 key={item.label}
                 href={item.href}
-                className="rounded-full px-4 py-2 text-[11px] font-medium tracking-[0.12em] text-[#aab6cb] transition-all duration-300 hover:bg-white/[0.07] hover:text-white sm:px-5 sm:text-[12px]"
+                className="portfolio-nav-link rounded-full px-3 py-2.5 text-[10px] font-medium tracking-[0.08em] text-[#aab6cb] transition-all duration-300 hover:bg-white/[0.07] hover:text-white sm:px-5 sm:text-[12px]"
               >
                 {item.label}
               </a>
