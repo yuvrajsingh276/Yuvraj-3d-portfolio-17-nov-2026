@@ -78,7 +78,7 @@ export function WorkGallery() {
   const previousPageScroll = useRef(0);
   const previousBodyOverflow = useRef('');
   const previousHtmlOverflow = useRef('');
-  const drag = useRef({ active: false, moved: false, startX: 0, scrollLeft: 0 });
+  const drag = useRef({ active: false, moved: false, startX: 0, scrollLeft: 0, pointerId: -1 });
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -136,7 +136,8 @@ export function WorkGallery() {
     if (event.pointerType === 'touch' || event.button !== 0) return;
     const track = trackRef.current;
     if (!track) return;
-    drag.current = { active: true, moved: false, startX: event.clientX, scrollLeft: track.scrollLeft };
+    drag.current = { active: true, moved: false, startX: event.clientX, scrollLeft: track.scrollLeft, pointerId: event.pointerId };
+    event.currentTarget.setPointerCapture(event.pointerId);
     setDragging(true);
   };
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -145,7 +146,8 @@ export function WorkGallery() {
     if (Math.abs(delta) > 5) drag.current.moved = true;
     trackRef.current.scrollLeft = drag.current.scrollLeft - delta;
   };
-  const onPointerUp = () => {
+  const onPointerUp = (event?: ReactPointerEvent<HTMLDivElement>) => {
+    if (event && event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     drag.current.active = false;
     setDragging(false);
     requestAnimationFrame(() => { drag.current.moved = false; });
@@ -209,7 +211,7 @@ export function WorkGallery() {
         {activeProject && (
           <motion.div
             key="project-detail-overlay"
-            className="fixed inset-0 z-[100] bg-[#05060b] text-white"
+            role="dialog" aria-modal="true" aria-label={`${activeProject.title} project details`} tabIndex={-1} className="fixed inset-0 z-[100] bg-[#05060b] text-white"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
