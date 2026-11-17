@@ -10,8 +10,8 @@ const experience = [
 export function ExperienceAbout() {
   const [paused, setPaused] = useState(false);
   return (
-    <>
-      <section id="experience" aria-label="Professional experience" className="experience-stage sticky top-0 z-20 flex min-h-screen flex-col justify-center overflow-hidden border-t border-white/[0.06] bg-[#050711] py-20">
+    <div className="experience-about-stack relative z-20">
+      <section id="experience" aria-label="Professional experience" className="experience-stage sticky top-0 z-20 flex h-screen min-h-screen flex-col justify-center overflow-hidden border-t border-white/[0.06] bg-[#050711] py-16">
         <div className="mx-auto mb-12 w-full max-w-7xl px-6 sm:mb-16">
           <p className="mb-4 text-[10px] font-semibold tracking-[0.3em] text-violet-300/75">02 / CAREER JOURNEY</p>
           <div className="flex items-end justify-between gap-5">
@@ -27,7 +27,7 @@ export function ExperienceAbout() {
         <div className="experience-marquee w-full overflow-hidden" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onTouchStart={() => setPaused(true)} onTouchEnd={() => setPaused(false)}>
           <div className={`experience-track flex ${paused ? 'is-paused' : ''}`}>
             {experience.map(item => (
-              <article key={item.period} className="flex min-h-[260px] w-full shrink-0 flex-col justify-center px-8 sm:min-h-[300px] sm:px-[12vw]">
+              <article key={item.period} className="flex min-h-[260px] w-screen shrink-0 basis-[100vw] flex-col justify-center px-8 sm:min-h-[300px] sm:px-[12vw]">
                 <div className="max-w-5xl">
                   <p className="mb-5 text-[11px] font-semibold tracking-[0.28em] text-violet-300/80">{item.period} <span className="text-white/25">/ 03</span></p>
                   <h3 className="text-[clamp(2.3rem,8vw,6.5rem)] font-semibold leading-[0.98] tracking-[-0.06em] text-white">{item.company}</h3>
@@ -42,7 +42,7 @@ export function ExperienceAbout() {
         <p className="mt-8 text-center text-[10px] tracking-[0.16em] text-white/30">AUTO-PLAY · HOVER OR HOLD TO PAUSE</p>
       </section>
 
-      <section id="about" aria-label="About Yuvraj Singh" className="about-overlay relative z-30 -mt-[100vh] pt-[100vh]">
+      <section id="about" aria-label="About Yuvraj Singh" className="about-overlay relative z-30 -mt-[100vh]">
         <div className="relative overflow-hidden border-t border-white/[0.06] bg-[#080a14] px-6 py-24 sm:py-32">
           <div className="pointer-events-none absolute -right-40 top-10 h-[420px] w-[420px] rounded-full bg-violet-500/[0.08] blur-[110px]" />
           <div className="relative mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1.15fr_0.85fr] lg:gap-20">
@@ -69,6 +69,6 @@ export function ExperienceAbout() {
           </div>
         </div>
       </section>
-    </>
+    </div>
   );
 }
