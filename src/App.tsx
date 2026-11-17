@@ -125,7 +125,7 @@ export default function App() {
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.85, delay: 0.08, ease: HERO_EASE }}
-                  className="hero-gradient-text overflow-visible whitespace-nowrap pb-[0.06em] text-[clamp(2.1rem,6.2vw,5.75rem)] font-bold tracking-[0.04em] leading-[1.12]"
+                  className="hero-gradient-text overflow-visible whitespace-nowrap pb-[0.06em] text-[clamp(1.618rem,6.2vw,4.236rem)] font-bold tracking-[0.04em] leading-[1.12]"
                 >
                   YUVRAJ SINGH
                 </motion.h1>
