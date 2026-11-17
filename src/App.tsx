@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { ShowcaseStage } from './scene/ShowcaseStage';
+import { ParticleWaveBackground } from './components/ParticleWaveBackground';
 import { ShowcaseHUD } from './components/ShowcaseHUD';
 import type { ToolSpec } from './scene/showcaseLogic';
 
@@ -65,16 +66,18 @@ export default function App() {
           e.currentTarget.style.setProperty('--pointer-x', e.clientX + 'px');
           e.currentTarget.style.setProperty('--pointer-y', e.clientY + 'px');
         }}
-        className="relative h-screen w-screen overflow-hidden bg-[#080b18]"
+        className="relative isolate h-screen w-screen overflow-hidden bg-[#02040a]"
         data-selected-tool={selectedTool?.id ?? 'none'}
         data-hovered-tool={hoveredTool?.id ?? 'none'}
         data-motion-paused={String(motionPaused)}
       >
-        {/* Isolated WebGL canvas mount container (never re-rendered on HUD state updates) */}
+        <ParticleWaveBackground />
+
+        {/* Existing interactive WebGL scene stays above the lightweight background */}
         <div
           ref={canvasMountRef}
           data-testid="showcase-canvas-mount"
-          className="absolute inset-0 h-full w-full"
+          className="absolute inset-0 z-[1] h-full w-full"
         />
 
         <div
