@@ -88,6 +88,7 @@ export class ShowcaseStage {
   private hoverStates = new Map<string, HoverKinematicsState>();
   private dustPoints!: THREE.Points;
   private dustBasePositions!: Float32Array;
+  private dustVelocities!: Float32Array;
   private flutedBg!: FlutedBackgroundController;
   private orbitGuideRing!: THREE.Group;
   private scatterStates = new Map<string, IconScatterState>();
@@ -210,7 +211,7 @@ export class ShowcaseStage {
 
     const camDist = computeResponsiveCameraDistance(aspect);
     this.camera = new THREE.PerspectiveCamera(44, aspect, 0.1, 120);
-    this.camera.position.set(0, 0.15, camDist);
+    this.camera.position.set(0, 0.15, camDist * (aspect >= 0.85 ? 1.08 : 1.04));
 
     if (!this.isSoftwareGl && (this.bloomIntensity > 0.001 || this.dofStrength > 0.001)) {
       const initDof = computeDofConfig(camDist, this.currentFocusWorldZ, this.dofStrength);
@@ -340,8 +341,8 @@ export class ShowcaseStage {
     }
 
     const isPortrait = this.currentAspect < 0.85;
-    const radiusX = isPortrait ? 4.7 : 7.55;
-    const radiusY = isPortrait ? 5.2 : 3.25;
+    const radiusX = isPortrait ? 5.0 : 8.55;
+    const radiusY = isPortrait ? 5.45 : 3.72;
     const tilt = (20 * Math.PI) / 180;
     const pointOnOrbit = (angle: number, scale = 1) => {
       const orbitY = Math.sin(angle) * radiusY * scale;
@@ -405,9 +406,9 @@ export class ShowcaseStage {
 
     // Fine broken accents follow the same tilted ellipse without forming full rings.
     const accentArcs = [
-      { start: 0.06, end: 0.27, scale: 1.018, radius: 0.00125, opacity: 0.13 },
-      { start: 0.39, end: 0.57, scale: 0.986, radius: 0.00105, opacity: 0.11 },
-      { start: 0.72, end: 0.91, scale: 1.032, radius: 0.00115, opacity: 0.12 },
+      { start: 0.035, end: 0.285, scale: 1.022, radius: 0.0018, opacity: 0.27 },
+      { start: 0.365, end: 0.595, scale: 0.978, radius: 0.00155, opacity: 0.23 },
+      { start: 0.695, end: 0.935, scale: 1.038, radius: 0.0017, opacity: 0.25 },
     ];
     accentArcs.forEach((arc, index) => {
       const arcPoints = Array.from({ length: 52 }, (_, i) => {
@@ -595,7 +596,8 @@ export class ShowcaseStage {
 
       positions[i * 3] = Math.cos(theta) * r;
       positions[i * 3 + 1] = y;
-      positions[i * 3 + 2] = Math.sin(theta) * r;
+      // Seed particles throughout real camera depth, from far background to foreground.
+      positions[i * 3 + 2] = -14 + rand() * 23;
 
       const c = palette[i % palette.length];
       colors[i * 3] = c.r;
@@ -604,6 +606,8 @@ export class ShowcaseStage {
     }
 
     this.dustBasePositions = new Float32Array(positions);
+    this.dustVelocities = new Float32Array(count);
+    for (let i = 0; i < count; i++) this.dustVelocities[i] = 1.0 + rand() * 1.35;
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
@@ -715,7 +719,7 @@ export class ShowcaseStage {
     }
 
     const targetDist = computeResponsiveCameraDistance(aspect);
-    this.camera.position.set(0, 0.15, targetDist);
+    this.camera.position.set(0, 0.15, targetDist * (aspect >= 0.85 ? 1.08 : 1.04));
     this.controls.target.set(0, 0.15, 0);
     this.controls.update();
     this.applyDofState();
@@ -1020,6 +1024,22 @@ export class ShowcaseStage {
 
   private updateScene(dt: number) {
     const t = this.elapsedSec;
+    // Move particles through actual world-space Z depth toward the camera.
+    if (!this.reducedMotion && this.dustPoints) {
+      const positionAttr = this.dustPoints.geometry.getAttribute('position') as THREE.BufferAttribute;
+      const positions = positionAttr.array as Float32Array;
+      for (let i = 0; i < this.dustVelocities.length; i++) {
+        const offset = i * 3;
+        let z = positions[offset + 2] + this.dustVelocities[i] * dt;
+        if (z > 9) z = -14;
+        positions[offset + 2] = z;
+        const depthProgress = (z + 14) / 23;
+        const perspectiveScale = 0.48 + depthProgress * 1.28;
+        positions[offset] = this.dustBasePositions[offset] * perspectiveScale;
+        positions[offset + 1] = this.dustBasePositions[offset + 1] * perspectiveScale;
+      }
+      positionAttr.needsUpdate = true;
+    }
     // Orbit guide intentionally remains stationary.
 
     // 1. Smooth continuous orbital auto-scrolling + magnetic 36-deg alignment when hovered/released
