@@ -29,6 +29,7 @@ export function ParticleWaveBackground() {
     let pointerY = 0.5;
     let targetX = 0.5;
     let targetY = 0.5;
+    let pointerInside = false;
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     let seed = 92741;
@@ -83,24 +84,26 @@ export function ParticleWaveBackground() {
       const rect = host.getBoundingClientRect();
       targetX = clamp((event.clientX - rect.left) / Math.max(1, rect.width), 0, 1);
       targetY = clamp((event.clientY - rect.top) / Math.max(1, rect.height), 0, 1);
+      pointerInside = event.clientX >= rect.left && event.clientX <= rect.right
+        && event.clientY >= rect.top && event.clientY <= rect.bottom;
     };
-    const resetPointer = () => { targetX = 0.5; targetY = 0.5; };
+    const resetPointer = () => { targetX = 0.5; targetY = 0.5; pointerInside = false; };
 
     const draw = (time: number) => {
       const gradient = ctx.createLinearGradient(0, 0, 0, height);
-      gradient.addColorStop(0, '#07101f');
-      gradient.addColorStop(0.32, '#09152b');
-      gradient.addColorStop(0.68, '#0a1730');
-      gradient.addColorStop(1, '#071329');
+      gradient.addColorStop(0, '#02040a');
+      gradient.addColorStop(0.32, '#030713');
+      gradient.addColorStop(0.68, '#050918');
+      gradient.addColorStop(1, '#02040a');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, width, height);
 
       const centerX = width * (0.5 + (pointerX - 0.5) * 0.07);
       const centerY = height * 0.62;
       const aura = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, width * 0.9);
-      aura.addColorStop(0, 'rgba(56,189,248,0.15)');
-      aura.addColorStop(0.5, 'rgba(99,102,241,0.085)');
-      aura.addColorStop(1, 'rgba(7,19,44,0)');
+      aura.addColorStop(0, 'rgba(56,189,248,0.085)');
+      aura.addColorStop(0.5, 'rgba(99,102,241,0.045)');
+      aura.addColorStop(1, 'rgba(2,4,10,0)');
       ctx.fillStyle = aura;
       ctx.fillRect(0, 0, width, height);
 
@@ -129,7 +132,7 @@ export function ParticleWaveBackground() {
 
       // Delicate grid lines with a restrained 5% contrast shift.
       ctx.lineWidth = 0.65;
-      ctx.strokeStyle = 'rgba(135,160,205,0.052)';
+      ctx.strokeStyle = 'rgba(105,125,165,0.035)';
       ctx.beginPath();
       for (let col = 0; col <= gridCols; col++) {
         const x = col * cellW;
@@ -161,16 +164,28 @@ export function ParticleWaveBackground() {
       const colors = ['rgba(56,189,248,', 'rgba(129,140,248,', 'rgba(168,85,247,'];
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
-        const x = p.x * width;
-        const base = height * (0.39 + p.depth * 0.34);
+        const driftX = ((p.x * width) + time * (18 + p.depth * 18)) % (width + 8);
+        const x = driftX - 4;
+        const base = height * (0.27 + p.depth * 0.48);
         const amplitude = height * (0.035 + p.depth * 0.055);
         const wave = Math.sin(p.x * 9.2 + time * 0.52 + p.phase) * amplitude
           + Math.sin(p.x * 17.5 - time * 0.31 + p.phase * 0.55) * amplitude * 0.2;
-        const y = base + wave + (pointerY - 0.5) * height * 0.018
+        let y = base + wave + (pointerY - 0.5) * height * 0.018
           + (pointerX - 0.5) * (p.x - 0.5) * height * 0.028;
-        if (y < height * 0.25 || y > height * 0.9) continue;
+        // Cursor repulsion: particles smoothly scatter away from the pointer's local sector.
+        if (pointerInside) {
+          const dx = x - pointerX * width;
+          const dy = y - pointerY * height;
+          const distance = Math.hypot(dx, dy);
+          const repelRadius = Math.min(width, height) * 0.19;
+          if (distance < repelRadius && distance > 0.001) {
+            const force = (1 - distance / repelRadius) * 34;
+            y += (dy / distance) * force;
+          }
+        }
+        if (y < height * 0.04 || y > height * 0.98) continue;
         const ridge = 0.5 + 0.5 * Math.sin(p.x * 9.2 + time * 0.52 + p.phase);
-        const alpha = 0.22 + ridge * 0.42 * (0.35 + p.depth * 0.65);
+        const alpha = 0.16 + ridge * 0.34 * (0.35 + p.depth * 0.65);
         const colorIndex = p.hue > 0.82 ? 2 : p.hue > 0.52 ? 1 : 0;
         ctx.fillStyle = colors[colorIndex] + alpha.toFixed(3) + ')';
         const radius = p.size * (0.75 + p.depth * 0.5);
