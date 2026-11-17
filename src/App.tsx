@@ -74,7 +74,7 @@ export default function App() {
           e.currentTarget.style.setProperty('--pointer-x', e.clientX + 'px');
           e.currentTarget.style.setProperty('--pointer-y', e.clientY + 'px');
         }}
-        className="sticky top-0 z-0 h-screen w-screen overflow-hidden bg-[#010207]"
+        className="fixed inset-0 z-0 h-screen w-screen overflow-hidden bg-[#010207]"
         data-selected-tool={selectedTool?.id ?? 'none'}
         data-hovered-tool={hoveredTool?.id ?? 'none'}
         data-motion-paused={String(motionPaused)}
@@ -166,20 +166,20 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* Bottom-center scroll cue */}
+        {/* Animated mouse-wheel scroll indicator */}
         {!contextLost && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.85, delay: 0.4, ease: HERO_EASE }}
-            className="pointer-events-none fixed bottom-5 left-1/2 z-10 -translate-x-1/2 flex flex-col items-center gap-1.5"
+            aria-label="Scroll down"
+            className="pointer-events-none fixed bottom-6 left-1/2 z-10 flex h-11 w-7 -translate-x-1/2 items-start justify-center rounded-full border border-white/45 bg-[#090d1b]/35 p-1.5 shadow-[0_0_22px_rgba(129,92,246,0.18)]"
           >
-            <span className="text-[10.5px] sm:text-[11px] font-medium tracking-[0.26em] text-[#7f889e] uppercase whitespace-nowrap">
-              SCROLL TO EXPLORE
-            </span>
-            <span
+            <motion.span
               aria-hidden="true"
-              className="h-3.5 w-px bg-gradient-to-b from-[#6366f1]/80 to-transparent"
+              animate={{ y: [0, 10, 0], opacity: [1, 0.35, 1] }}
+              transition={{ duration: 1.35, repeat: Infinity, ease: "easeInOut" }}
+              className="h-2 w-1 rounded-full bg-violet-300 shadow-[0_0_8px_rgba(196,181,253,0.9)]"
             />
           </motion.div>
         )}
@@ -197,7 +197,7 @@ export default function App() {
       <section
         id="about"
         aria-label="Video introduction"
-        className="relative z-20 flex min-h-screen w-full items-center justify-center border-t border-white/[0.06] bg-[#070912] px-6 py-24"
+        className="relative z-20 mt-[100vh] flex min-h-screen w-full items-center justify-center border-t border-white/[0.06] bg-[#070912] px-6 py-24"
       >
         <div className="mx-auto w-full max-w-6xl">
           <div className="absolute inset-0 overflow-hidden bg-[radial-gradient(ellipse_at_50%_42%,rgba(111,76,190,0.20),transparent_55%),linear-gradient(135deg,#111525,#080a12_65%,#160d19)]">
