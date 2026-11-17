@@ -1,0 +1,6 @@
+{
+  "name": "Atelier Spatial — 3D Creative & AI Showcase",
+  "description": "Interactive 3D product showcase featuring sculpted creative software and AI tool icons in a cinematic orbital studio.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
