@@ -91,9 +91,9 @@ export default function App() {
           <div className="flex items-center gap-1 rounded-full border border-white/[0.09] bg-[#0a1222]/55 p-1.5 shadow-[0_8px_36px_rgba(0,0,0,0.22)]">
             {[
               { label: 'Home', href: '#home' },
-              { label: 'About', href: '#about' },
               { label: 'Work', href: '#work' },
-              { label: 'Contact', href: '#contact' },
+              { label: 'Experience', href: '#experience' },
+              { label: 'About', href: '#about' },
             ].map((item) => (
               <a
                 key={item.label}
