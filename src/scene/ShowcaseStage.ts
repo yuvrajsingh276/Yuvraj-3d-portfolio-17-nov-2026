@@ -142,6 +142,8 @@ export class ShowcaseStage {
   private elapsedSec = 0;
   private disposed = false;
   private contextLost = false;
+  private pageVisible = typeof document === 'undefined' || document.visibilityState === 'visible';
+  private heroVisible = typeof window === 'undefined' || window.scrollY < window.innerHeight * 0.9;
 
   constructor(container: HTMLElement, callbacks: ShowcaseCallbacks = {}) {
     this.container = container;
@@ -184,9 +186,8 @@ export class ShowcaseStage {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.84;
-    this.renderer.setPixelRatio(
-      Math.min(window.devicePixelRatio || 1, 1.1)
-    );
+    const pixelRatioCap = width < 640 ? 0.85 : width < 1024 ? 1 : 1.25;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioCap));
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.setSize(width, height);
     this.renderer.shadowMap.enabled = false;
@@ -642,6 +643,8 @@ export class ShowcaseStage {
 
   private bindEvents() {
     window.addEventListener('resize', this.handleResize);
+    window.addEventListener('scroll', this.handleScrollVisibility, { passive: true });
+    document.addEventListener('visibilitychange', this.handlePageVisibility);
     const canvas = this.renderer.domElement;
     canvas.addEventListener('pointermove', this.handlePointerMove);
     canvas.addEventListener('pointerdown', this.handlePointerDown);
@@ -653,6 +656,8 @@ export class ShowcaseStage {
 
   private unbindEvents() {
     window.removeEventListener('resize', this.handleResize);
+    window.removeEventListener('scroll', this.handleScrollVisibility);
+    document.removeEventListener('visibilitychange', this.handlePageVisibility);
     const canvas = this.renderer.domElement;
     canvas.removeEventListener('pointermove', this.handlePointerMove);
     canvas.removeEventListener('pointerdown', this.handlePointerDown);
@@ -661,6 +666,28 @@ export class ShowcaseStage {
     canvas.removeEventListener('webglcontextlost', this.handleContextLost);
     canvas.removeEventListener('webglcontextrestored', this.handleContextRestored);
   }
+
+  private handleScrollVisibility = () => {
+    const visible = window.scrollY < window.innerHeight * 0.9;
+    if (visible === this.heroVisible) return;
+    this.heroVisible = visible;
+    if (visible && this.pageVisible && !this.contextLost && !this.disposed) {
+      this.lastTimeMs = performance.now();
+      this.tick();
+    } else {
+      cancelAnimationFrame(this.frameId);
+    }
+  };
+
+  private handlePageVisibility = () => {
+    this.pageVisible = document.visibilityState === 'visible';
+    if (this.pageVisible && this.heroVisible && !this.contextLost && !this.disposed) {
+      this.lastTimeMs = performance.now();
+      this.tick();
+    } else {
+      cancelAnimationFrame(this.frameId);
+    }
+  };
 
   private handleContextLost = (e: Event) => {
     e.preventDefault();
@@ -686,6 +713,9 @@ export class ShowcaseStage {
 
     this.camera.aspect = aspect;
     this.camera.updateProjectionMatrix();
+    const pixelRatioCap = width < 640 ? 0.85 : width < 1024 ? 1 : 1.25;
+    const nextPixelRatio = Math.min(window.devicePixelRatio || 1, pixelRatioCap);
+    if (Math.abs(this.renderer.getPixelRatio() - nextPixelRatio) > 0.01) this.renderer.setPixelRatio(nextPixelRatio);
     this.renderer.setSize(width, height);
     if (this.composer) {
       this.composer.setSize(width, height);
@@ -992,7 +1022,7 @@ export class ShowcaseStage {
   }
 
   private tick = () => {
-    if (this.disposed || this.contextLost) return;
+    if (this.disposed || this.contextLost || !this.pageVisible || !this.heroVisible) return;
 
     const now = performance.now();
     const rawDt = (now - this.lastTimeMs) / 1000;
