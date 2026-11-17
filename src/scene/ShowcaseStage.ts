@@ -321,11 +321,12 @@ export class ShowcaseStage {
 
   private initOrbitalGuideRing(aspect: number) {
     this.orbitGuideRing = new THREE.Group();
+    this.orbitGuideRing.position.z = -2.4;
     this.constellationGroup.add(this.orbitGuideRing);
     this.rebuildOrbitalGuideRing(aspect, this.magneticRotation.angleDeg);
   }
 
-  /** A static gradient tube traced through the same anchor points as the icons. */
+  /** Four slim, stationary gradient arcs matching the original orbital silhouette. */
   private rebuildOrbitalGuideRing(aspect: number, angleOffsetDeg: number) {
     if (!this.orbitGuideRing) return;
 
@@ -338,57 +339,39 @@ export class ShowcaseStage {
       else material?.dispose();
     }
 
-    const slots = computeOrbitalLayout(TOOLS_CATALOG, aspect, angleOffsetDeg);
-    if (slots.length < 3) return;
+    const isPortrait = aspect < 0.85;
+    const xStretch = isPortrait ? 0.92 : 1.46;
+    const yBoost = isPortrait ? 2.15 : 1.16;
+    const tiltFactor = isPortrait ? 0.1 : 0.18;
+    const palette = ['#ff3b36', '#ffd84a', '#438cff', '#f5f8ff'];
+    const arcLength = Math.PI * 0.62;
 
-    // Follow the actual icon positions, slightly behind their front surfaces.
-    const points = slots.map((slot) =>
-      new THREE.Vector3(slot.position[0], slot.position[1], slot.position[2] - 0.52)
-    );
-    const curve = new THREE.CatmullRomCurve3(points, true, 'centripetal', 0.35);
-    const tubularSegments = Math.max(240, slots.length * 36);
-    const radialSegments = 6;
-
-    const makeGradientTube = (radius: number) => {
-      const geometry = new THREE.TubeGeometry(curve, tubularSegments, radius, radialSegments, true);
-      const colors = new Float32Array(geometry.getAttribute('position').count * 3);
-      const verticesPerRing = radialSegments + 1;
-      for (let i = 0; i < colors.length / 3; i++) {
-        const t = Math.floor(i / verticesPerRing) / tubularSegments;
-        const [r, g, b] = sampleYellowRedOrangeBlueGradient(t);
-        colors[i * 3] = r;
-        colors[i * 3 + 1] = g;
-        colors[i * 3 + 2] = b;
+    for (let arc = 0; arc < 4; arc++) {
+      const startAngle = (arc / 4) * Math.PI * 2 + 0.18 + THREE.MathUtils.degToRad(angleOffsetDeg);
+      const points: THREE.Vector3[] = [];
+      const count = 56;
+      for (let i = 0; i < count; i++) {
+        const angle = startAngle + (i / (count - 1)) * arcLength;
+        const x = Math.cos(angle) * 5.38 * xStretch;
+        const z = Math.sin(angle) * 2.69 - 2.4;
+        const y = Math.sin(angle) * 2.85 * yBoost + x * tiltFactor + 0.15;
+        points.push(new THREE.Vector3(x, y, z));
       }
-      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-      return geometry;
-    };
 
-    const glow = new THREE.Mesh(
-      makeGradientTube(0.105),
-      new THREE.MeshBasicMaterial({
-        vertexColors: true,
+      const curve = new THREE.CatmullRomCurve3(points, false, 'centripetal');
+      const geometry = new THREE.TubeGeometry(curve, 84, 0.009, 5, false);
+      const color = new THREE.Color(palette[arc]);
+      const material = new THREE.MeshBasicMaterial({
+        color,
         transparent: true,
-        opacity: 0.24,
-        blending: THREE.AdditiveBlending,
+        opacity: 0.76,
         depthWrite: false,
         depthTest: true,
-      })
-    );
-    const line = new THREE.Mesh(
-      makeGradientTube(0.024),
-      new THREE.MeshBasicMaterial({
-        vertexColors: true,
-        transparent: true,
-        opacity: 0.94,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        depthTest: true,
-      })
-    );
-    glow.renderOrder = 1;
-    line.renderOrder = 2;
-    this.orbitGuideRing.add(glow, line);
+      });
+      const line = new THREE.Mesh(geometry, material);
+      line.renderOrder = 2;
+      this.orbitGuideRing.add(line);
+    }
   }
 
   private initScatterBurstParticles() {
@@ -507,19 +490,23 @@ export class ShowcaseStage {
   }
 
   private attachIconHalo(entry: BuiltIconEntry) {
-    const cfg = computeBloomConfig(this.bloomIntensity);
+    // Small, local accent light makes each icon catch light at its own position.
+    const localLight = new THREE.PointLight(entry.spec.accentHex, 2.2, 3.2, 2);
+    localLight.position.set(0, 0, 0.32);
+    entry.bodyGroup.add(localLight);
+
     const haloMat = new THREE.SpriteMaterial({
       map: this.textures.glowSprite,
       color: entry.spec.accentHex,
       transparent: true,
-      opacity: Math.max(cfg.haloOpacity, 0.58),
+      opacity: 0.34,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
-      depthTest: true,
+      depthTest: false,
     });
     const sprite = new THREE.Sprite(haloMat);
-    sprite.scale.set(3.45, 3.45, 1);
-    sprite.position.set(0, 0, -0.35);
+    sprite.scale.set(2.35, 2.35, 1);
+    sprite.position.set(0, 0, -0.18);
     sprite.visible = true;
     entry.bodyGroup.add(sprite);
     this.iconHalos.set(entry.spec.id, sprite);
@@ -829,7 +816,7 @@ export class ShowcaseStage {
     }
     this.renderer.toneMappingExposure = this.activePreset.exposure - cfg.exposureTrim;
     this.iconHalos.forEach((sprite) => {
-      sprite.material.opacity = Math.max(cfg.haloOpacity, 0.50);
+      sprite.material.opacity = Math.max(cfg.haloOpacity, 0.34);
       sprite.visible = true;
     });
   }
@@ -1100,7 +1087,7 @@ export class ShowcaseStage {
       const halo = this.iconHalos.get(id);
       if (halo) {
         // Persistent soft bloom for every icon, with a subtle extra lift on hover.
-        halo.material.opacity = 0.42 + Math.max(0, nextState.glowBoost) * 0.16;
+        halo.material.opacity = 0.34 + Math.max(0, nextState.glowBoost) * 0.12;
         halo.visible = true;
       }
     }
