@@ -144,14 +144,14 @@ export default function App() {
                 >
                   YUVRAJ SINGH
                 </motion.h1>
-                <motion.p
+                <motion.h2
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.85, delay: 0.18, ease: HERO_EASE }}
                   className="mt-1 sm:mt-1.5 text-[13.5px] sm:text-[17px] md:text-[18px] font-medium leading-snug tracking-[0.02em] text-[#b6bfd3] text-balance"
                 >
                   Creative Technologist • 3D Artist • Motion Designer
-                </motion.p>
+                </motion.h2>
                 <motion.p
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
