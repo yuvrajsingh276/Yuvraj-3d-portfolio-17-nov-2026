@@ -36,6 +36,29 @@ export function ParticleWaveBackground() {
       seed = (seed * 16807) % 2147483647;
       return (seed - 1) / 2147483646;
     };
+    const gridCellSize = 54;
+    let gridCols = 1;
+    let gridRows = 1;
+    let gridOpacity: number[] = [];
+    let gridTarget: number[] = [];
+    let nextGridChange = 0;
+    const gridParticles = Array.from({ length: 16 }, (_, i) => ({
+      progress: (i * 0.61803398875) % 1,
+      speed: 0.025 + random() * 0.045,
+      row: Math.floor(random() * 12),
+      horizontal: random() > 0.5,
+      phase: random() * TAU,
+    }));
+
+    const rebuildGrid = () => {
+      gridCols = Math.ceil(width / gridCellSize);
+      gridRows = Math.ceil(height / gridCellSize);
+      const count = gridCols * gridRows;
+      gridOpacity = Array.from({ length: count }, () => random() * 0.018);
+      gridTarget = gridOpacity.slice();
+      nextGridChange = 0;
+    };
+
     const particles: Particle[] = Array.from({ length: 3200 }, () => ({
       x: random(),
       depth: random(),
@@ -52,6 +75,7 @@ export function ParticleWaveBackground() {
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      rebuildGrid();
       draw(0);
     };
 
@@ -79,6 +103,59 @@ export function ParticleWaveBackground() {
       aura.addColorStop(1, 'rgba(7,19,44,0)');
       ctx.fillStyle = aura;
       ctx.fillRect(0, 0, width, height);
+
+      // Fine grid: low-contrast cells fade between filled and empty states.
+      if (time >= nextGridChange) {
+        for (let i = 0; i < gridTarget.length; i++) {
+          gridTarget[i] = random() > 0.64 ? 0.045 + random() * 0.018 : 0.002 + random() * 0.012;
+        }
+        nextGridChange = time + 1.4 + random() * 1.5;
+      }
+      const cellW = width / Math.max(1, gridCols);
+      const cellH = height / Math.max(1, gridRows);
+      for (let row = 0; row < gridRows; row++) {
+        for (let col = 0; col < gridCols; col++) {
+          const index = row * gridCols + col;
+          const current = gridOpacity[index] ?? 0;
+          const target = gridTarget[index] ?? 0;
+          const next = current + (target - current) * 0.035;
+          gridOpacity[index] = next;
+          if (next > 0.009) {
+            ctx.fillStyle = `rgba(112,145,205,${next.toFixed(3)})`;
+            ctx.fillRect(col * cellW + 1, row * cellH + 1, cellW - 2, cellH - 2);
+          }
+        }
+      }
+
+      // Delicate grid lines with a restrained 5% contrast shift.
+      ctx.lineWidth = 0.65;
+      ctx.strokeStyle = 'rgba(135,160,205,0.052)';
+      ctx.beginPath();
+      for (let col = 0; col <= gridCols; col++) {
+        const x = col * cellW;
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+      }
+      for (let row = 0; row <= gridRows; row++) {
+        const y = row * cellH;
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+      }
+      ctx.stroke();
+
+      // Tiny light points glide along selected grid lines.
+      for (let i = 0; i < gridParticles.length; i++) {
+        const p = gridParticles[i];
+        p.progress = (p.progress + p.speed / 30) % 1;
+        const horizontal = p.horizontal;
+        const x = horizontal ? p.progress * width : ((p.row % gridCols) + 0.5) * cellW;
+        const y = horizontal ? ((p.row % gridRows) + 0.5) * cellH : p.progress * height;
+        const pulse = 0.45 + 0.35 * Math.sin(time * 1.7 + p.phase);
+        ctx.fillStyle = `rgba(133,190,255,${pulse.toFixed(2)})`;
+        ctx.beginPath();
+        ctx.arc(x, y, 1.05, 0, TAU);
+        ctx.fill();
+      }
 
       // Three restrained color batches keep the draw loop inexpensive.
       const colors = ['rgba(56,189,248,', 'rgba(129,140,248,', 'rgba(168,85,247,'];
