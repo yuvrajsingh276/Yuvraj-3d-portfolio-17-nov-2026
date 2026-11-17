@@ -333,14 +333,15 @@ export function computeOrbitalLayout(
   const xStretch = isPortrait ? 0.92 : 1.46;
   const yBoost = isPortrait ? 2.15 : 1.16;
   const yRadius = 2.85;
-  // Subtle diagonal orbital tilt matching the reference composition
-  const tiltFactor = isPortrait ? 0.1 : 0.18;
+  // Evenly distribute every icon across the upper half of one shared orbital arc.
+  const angleOffset = (angleOffsetDeg * Math.PI) / 180;
 
   return tools.map((tool, index) => {
-    const rad = ((tool.angleDeg + angleOffsetDeg) * Math.PI) / 180;
+    const progress = index / Math.max(1, tools.length - 1);
+    const rad = Math.PI * (0.12 + progress * 0.76) + angleOffset;
     const x = Math.cos(rad) * tool.orbitRadius * xStretch;
-    const z = Math.sin(rad) * tool.orbitRadius * 0.50 + tool.zDepthBias;
-    const y = Math.sin(rad) * yRadius * yBoost + x * tiltFactor + 0.15;
+    const z = Math.sin(rad) * tool.orbitRadius * 0.22 + tool.zDepthBias;
+    const y = Math.sin(rad) * yRadius * yBoost + x * 0.045 + 0.15;
 
     // Gentle varied 3D sculptural card tilt toward center/viewer like reference tiles
     const baseRotationY = Math.atan2(-x, 15 - z) * 0.48;
