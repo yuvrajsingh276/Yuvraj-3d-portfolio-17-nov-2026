@@ -27,7 +27,7 @@ export function ParticleWaveBackground() {
     const orbs = Array.from({ length: 42 }, (_, i) => ({
       x: (i * 0.61803398875) % 1,
       y: 0.48 + ((i * 0.754877666) % 1) * 0.48,
-      r: 2 + ((i * 7) % 22) / 1.2,
+      r: 2 + ((i * 7) % 22) / 2,
       speed: 0.008 + ((i * 13) % 9) * 0.0015,
       phase: i * 1.71,
       hue: i % 3,
@@ -139,7 +139,7 @@ export function ParticleWaveBackground() {
         ctx.fill();
         ctx.fillStyle = 'rgba(' + color + ',' + (0.22 * pulse) + ')';
         ctx.beginPath();
-        ctx.arc(x, y, orb.r * 0.42, 0, TAU);
+        ctx.arc(x, y, orb.r, 0, TAU);
         ctx.fill();
       }
 
