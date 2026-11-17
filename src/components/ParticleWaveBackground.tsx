@@ -164,14 +164,17 @@ export function ParticleWaveBackground() {
       const colors = ['rgba(56,189,248,', 'rgba(129,140,248,', 'rgba(168,85,247,'];
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
-        const driftX = ((p.x * width) + time * (18 + p.depth * 18)) % (width + 8);
+        const driftX = ((p.x * width) + time * (10 + p.depth * 26)) % (width + 8);
         let x = driftX - 4;
-        const base = height * (0.27 + p.depth * 0.48);
-        const amplitude = height * (0.035 + p.depth * 0.055);
+        const depthFlow = (time * (0.012 + p.depth * 0.035)) % 1;
+        const depthScale = 0.55 + p.depth * 0.9;
+        const base = height * (0.12 + p.depth * 0.72);
+        const amplitude = height * (0.018 + p.depth * 0.052);
         const wave = Math.sin(p.x * 9.2 + time * 0.52 + p.phase) * amplitude
           + Math.sin(p.x * 17.5 - time * 0.31 + p.phase * 0.55) * amplitude * 0.2;
-        let y = base + wave + (pointerY - 0.5) * height * 0.018
-          + (pointerX - 0.5) * (p.x - 0.5) * height * 0.028;
+        let y = base + wave - depthFlow * height * 0.08
+          + (pointerY - 0.5) * height * 0.025 * depthScale
+          + (pointerX - 0.5) * (p.x - 0.5) * height * 0.035 * depthScale;
         // Cursor repulsion: particles smoothly scatter away from the pointer's local sector.
         if (pointerInside) {
           const dx = x - pointerX * width;
@@ -189,7 +192,7 @@ export function ParticleWaveBackground() {
         const alpha = 0.16 + ridge * 0.34 * (0.35 + p.depth * 0.65);
         const colorIndex = p.hue > 0.82 ? 2 : p.hue > 0.52 ? 1 : 0;
         ctx.fillStyle = colors[colorIndex] + alpha.toFixed(3) + ')';
-        const radius = p.size * (0.75 + p.depth * 0.5);
+        const radius = p.size * depthScale;
         ctx.fillRect(x, y, radius, radius);
       }
 
