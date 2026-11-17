@@ -326,8 +326,8 @@ export class ShowcaseStage {
     this.rebuildOrbitalGuideRing(aspect, this.magneticRotation.angleDeg);
   }
 
-  /** Thin glowing orbit sampled directly from the icon anchor positions. */
-  private rebuildOrbitalGuideRing(aspect: number, angleOffsetDeg: number) {
+  /** Fixed 45-degree tilted oval; icons orbit around this stationary guide. */
+  private rebuildOrbitalGuideRing(_aspect: number, _angleOffsetDeg: number) {
     if (!this.orbitGuideRing) return;
 
     for (const child of [...this.orbitGuideRing.children]) {
@@ -339,26 +339,21 @@ export class ShowcaseStage {
       else material?.dispose();
     }
 
-    const slots = computeOrbitalLayout(TOOLS_CATALOG, aspect, angleOffsetDeg);
-    if (slots.length < 3) return;
-
-    // A slim horizontal oval sits beneath the complete upper row of evenly spaced icons.
-    const centerX = slots.reduce((sum, slot) => sum + slot.position[0], 0) / slots.length;
-    const lowestIconY = Math.min(...slots.map((slot) => slot.position[1]));
-    const centerY = lowestIconY - 0.42;
-    const centerZ = Math.min(...slots.map((slot) => slot.position[2])) - 0.22;
-    const radiusX = Math.max(...slots.map((slot) => Math.abs(slot.position[0] - centerX))) * 1.06;
-    const radiusY = 0.14;
-    const ovalPoints = Array.from({ length: 192 }, (_, i) => {
-      const angle = (i / 192) * Math.PI * 2;
+    const isPortrait = this.currentAspect < 0.85;
+    const radiusX = isPortrait ? 4.7 : 7.55;
+    const radiusY = isPortrait ? 5.2 : 3.25;
+    const tilt = Math.PI / 4;
+    const points = Array.from({ length: 256 }, (_, i) => {
+      const angle = (i / 256) * Math.PI * 2;
+      const orbitY = Math.sin(angle) * radiusY;
       return new THREE.Vector3(
-        centerX + Math.cos(angle) * radiusX,
-        centerY + Math.sin(angle) * radiusY,
-        centerZ
+        Math.cos(angle) * radiusX,
+        orbitY * Math.cos(tilt),
+        orbitY * Math.sin(tilt)
       );
     });
-    const curve = new THREE.CatmullRomCurve3(ovalPoints, true, 'centripetal', 0.35);
-    const tubularSegments = 640;
+    const curve = new THREE.CatmullRomCurve3(points, true, 'centripetal', 0.35);
+    const tubularSegments = 768;
     const radialSegments = 4;
 
     const makeGradientTube = (radius: number) => {
@@ -376,33 +371,30 @@ export class ShowcaseStage {
       return geometry;
     };
 
-    // Very slim soft aura beneath an even finer, crisp gradient core.
     const aura = new THREE.Mesh(
-      makeGradientTube(0.009),
+      makeGradientTube(0.010),
       new THREE.MeshBasicMaterial({
         vertexColors: true,
         transparent: true,
-        opacity: 0.72,
+        opacity: 0.78,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
-        depthTest: true,
+        depthTest: false,
       })
     );
     const core = new THREE.Mesh(
-      makeGradientTube(0.0025),
+      makeGradientTube(0.0022),
       new THREE.MeshBasicMaterial({
         vertexColors: true,
         transparent: true,
-        opacity: 1.0,
+        opacity: 1,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
-        depthTest: true,
+        depthTest: false,
       })
     );
     aura.renderOrder = -2;
     core.renderOrder = -1;
-    (aura.material as THREE.Material).depthTest = false;
-    (core.material as THREE.Material).depthTest = false;
     this.orbitGuideRing.add(aura, core);
   }
 
@@ -1021,7 +1013,6 @@ export class ShowcaseStage {
         this.currentAspect,
         this.magneticRotation.angleDeg
       );
-      this.rebuildOrbitalGuideRing(this.currentAspect, this.magneticRotation.angleDeg);
       for (let i = 0; i < this.icons.length; i++) {
         const slot = slots[i];
         this.icons[i].anchorGroup.position.set(
