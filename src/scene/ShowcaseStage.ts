@@ -104,7 +104,7 @@ export class ShowcaseStage {
   private dustPoints!: THREE.Points;
   private dustBasePositions!: Float32Array;
   private flutedBg!: FlutedBackgroundController;
-  private orbitGuideRing!: THREE.Points;
+  private orbitGuideRing!: THREE.Group;
   private scatterStates = new Map<string, IconScatterState>();
   private scatterBurstPoints!: THREE.Points;
   private scatterBurstVelocities = new Float32Array(36 * 3);
@@ -333,62 +333,66 @@ export class ShowcaseStage {
     this.initScatterBurstParticles();
   }
 
-  private buildOrbitGuidePositions(aspect: number): Float32Array {
+  private initOrbitalGuideRing(aspect: number) {
     const isPortrait = aspect < 0.85;
     const xStretch = isPortrait ? 0.92 : 1.46;
     const yBoost = isPortrait ? 2.15 : 1.16;
     const tiltFactor = isPortrait ? 0.1 : 0.18;
-    const segments = 480;
-    const pts = new Float32Array(segments * 3);
-    for (let i = 0; i < segments; i++) {
-      const rad = (i / segments) * Math.PI * 2;
-      const x = Math.cos(rad) * 5.38 * xStretch;
-      const z = Math.sin(rad) * 5.38 * 0.5 - 0.72;
-      const y = Math.sin(rad) * 2.85 * yBoost + x * tiltFactor + 0.15;
-      // A tiny depth variation gives the orbit a soft, organic particle trail.
-      const depthRipple = Math.sin(rad * 13) * 0.035;
-      pts[i * 3] = x;
-      pts[i * 3 + 1] = y + depthRipple;
-      pts[i * 3 + 2] = z;
+    const palette = ['#ff3b36', '#ffd84a', '#438cff', '#f5f8ff'];
+    this.orbitGuideRing = new THREE.Group();
+    this.orbitGuideRing.position.z = -2.4;
+
+    // Four separated, softly blurred particle arcs sit behind the full icon carousel.
+    for (let arc = 0; arc < 4; arc++) {
+      const count = 92;
+      const startAngle = (arc / 4) * Math.PI * 2 + 0.18;
+      const arcLength = Math.PI * 0.62;
+      const positions = new Float32Array(count * 3);
+      for (let i = 0; i < count; i++) {
+        const angle = startAngle + (i / (count - 1)) * arcLength;
+        const x = Math.cos(angle) * 5.38 * xStretch;
+        const z = Math.sin(angle) * 2.69 - 2.4;
+        const y = Math.sin(angle) * 2.85 * yBoost + x * tiltFactor + 0.15;
+        positions[i * 3] = x;
+        positions[i * 3 + 1] = y + Math.sin(angle * 11 + arc) * 0.035;
+        positions[i * 3 + 2] = z;
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const color = new THREE.Color(palette[arc]);
+
+      // Broad additive layer creates a soft glow; crisp points sit over it.
+      const glowMat = new THREE.PointsMaterial({
+        color,
+        size: 0.30,
+        map: this.textures.glowSprite,
+        transparent: true,
+        opacity: 0.30,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        depthTest: true,
+        sizeAttenuation: true,
+      });
+      const coreMat = new THREE.PointsMaterial({
+        color,
+        size: 0.105,
+        map: this.textures.particleSprite,
+        transparent: true,
+        opacity: 0.9,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        depthTest: true,
+        sizeAttenuation: true,
+      });
+
+      const glow = new THREE.Points(geo, glowMat);
+      const core = new THREE.Points(geo, coreMat);
+      glow.renderOrder = 1;
+      core.renderOrder = 2;
+      this.orbitGuideRing.add(glow, core);
     }
-    return pts;
-  }
 
-  private initOrbitalGuideRing(aspect: number) {
-    const positions = this.buildOrbitGuidePositions(aspect);
-    const count = positions.length / 3;
-    const colors = new Float32Array(count * 3);
-    const palette = [
-      new THREE.Color('#ff3b36'),
-      new THREE.Color('#ffd84a'),
-      new THREE.Color('#438cff'),
-      new THREE.Color('#f5f8ff'),
-    ];
-
-    for (let i = 0; i < count; i++) {
-      const scaled = (i / count) * (palette.length - 1);
-      const segment = Math.min(palette.length - 2, Math.floor(scaled));
-      const color = palette[segment].clone().lerp(palette[segment + 1], scaled - segment);
-      colors[i * 3] = color.r;
-      colors[i * 3 + 1] = color.g;
-      colors[i * 3 + 2] = color.b;
-    }
-
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    const mat = new THREE.PointsMaterial({
-      color: '#ffffff',
-      size: 0.105,
-      map: this.textures.particleSprite,
-      transparent: true,
-      opacity: 0.82,
-      vertexColors: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      sizeAttenuation: true,
-    });
-    this.orbitGuideRing = new THREE.Points(geo, mat);
     this.constellationGroup.add(this.orbitGuideRing);
   }
 
@@ -513,13 +517,13 @@ export class ShowcaseStage {
       map: this.textures.glowSprite,
       color: entry.spec.accentHex,
       transparent: true,
-      opacity: Math.max(cfg.haloOpacity, 0.20),
+      opacity: Math.max(cfg.haloOpacity, 0.50),
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       depthTest: true,
     });
     const sprite = new THREE.Sprite(haloMat);
-    sprite.scale.set(3.0, 3.0, 1);
+    sprite.scale.set(3.8, 3.8, 1);
     sprite.position.set(0, 0, -0.35);
     sprite.visible = true;
     entry.bodyGroup.add(sprite);
@@ -836,7 +840,7 @@ export class ShowcaseStage {
     }
     this.renderer.toneMappingExposure = this.activePreset.exposure - cfg.exposureTrim;
     this.iconHalos.forEach((sprite) => {
-      sprite.material.opacity = Math.max(cfg.haloOpacity, 0.20);
+      sprite.material.opacity = Math.max(cfg.haloOpacity, 0.50);
       sprite.visible = true;
     });
   }
@@ -985,8 +989,9 @@ export class ShowcaseStage {
   private updateScene(dt: number) {
     const t = this.elapsedSec;
     if (this.orbitGuideRing && !this.reducedMotion) {
-      this.orbitGuideRing.rotation.y = t * 0.045;
-      this.orbitGuideRing.rotation.z = Math.sin(t * 0.18) * 0.012;
+      // Clearly visible slow orbit; each separated arc travels behind the icon ring.
+      this.orbitGuideRing.rotation.y = t * 0.22;
+      this.orbitGuideRing.rotation.z = Math.sin(t * 0.32) * 0.025;
     }
 
     // 1. Smooth continuous orbital auto-scrolling + magnetic 36-deg alignment when hovered/released
