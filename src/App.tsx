@@ -5,6 +5,7 @@ import { ParticleWaveBackground } from './components/ParticleWaveBackground';
 import { ShowcaseHUD } from './components/ShowcaseHUD';
 import type { ToolSpec } from './scene/showcaseLogic';
 import { WorkGallery } from './components/WorkGallery';
+import { ExperienceAbout } from './components/ExperienceAbout';
 
 const HERO_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
@@ -217,6 +218,9 @@ export default function App() {
       <div id="work" className="relative z-20 border-t border-white/[0.06]">
         <WorkGallery />
       </div>
+
+      {/* Experience marquee and personal profile sections follow the work gallery */}
+      <ExperienceAbout />
       </div>
     </MotionConfig>
   );
