@@ -20,15 +20,21 @@ export default function App() {
     const container = canvasMountRef.current;
     if (!container) return;
 
-    const stage = new ShowcaseStage(container, {
-      onHoverChange: (tool) => setHoveredTool(tool),
-      onSelectChange: (tool) => setSelectedTool(tool),
-      onContextLostChange: (lost) => setContextLost(lost),
-    });
-    stageRef.current = stage;
+    let stage: ShowcaseStage | null = null;
+    try {
+      stage = new ShowcaseStage(container, {
+        onHoverChange: (tool) => setHoveredTool(tool),
+        onSelectChange: (tool) => setSelectedTool(tool),
+        onContextLostChange: (lost) => setContextLost(lost),
+      });
+      stageRef.current = stage;
+    } catch (error) {
+      console.error('3D showcase failed to initialize; keeping portfolio content visible.', error);
+      setContextLost(true);
+    }
 
     return () => {
-      stage.dispose();
+      stage?.dispose();
       stageRef.current = null;
     };
   }, []);
@@ -115,7 +121,7 @@ export default function App() {
 
         {/* Centralized typography aligned inside orbital ring */}
         <AnimatePresence>
-          {!contextLost && (
+          {(
             <motion.section
               key="hero-profile-layer"
               aria-label="Designer profile"
