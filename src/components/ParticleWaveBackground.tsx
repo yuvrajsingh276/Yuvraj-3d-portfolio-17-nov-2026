@@ -91,19 +91,19 @@ export function ParticleWaveBackground() {
 
     const draw = (time: number) => {
       const gradient = ctx.createLinearGradient(0, 0, 0, height);
-      gradient.addColorStop(0, '#02040a');
-      gradient.addColorStop(0.32, '#030713');
-      gradient.addColorStop(0.68, '#050918');
-      gradient.addColorStop(1, '#02040a');
+      gradient.addColorStop(0, '#010207');
+      gradient.addColorStop(0.32, '#01040b');
+      gradient.addColorStop(0.68, '#020510');
+      gradient.addColorStop(1, '#010207');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, width, height);
 
       const centerX = width * (0.5 + (pointerX - 0.5) * 0.07);
       const centerY = height * 0.62;
       const aura = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, width * 0.9);
-      aura.addColorStop(0, 'rgba(56,189,248,0.085)');
-      aura.addColorStop(0.5, 'rgba(99,102,241,0.045)');
-      aura.addColorStop(1, 'rgba(2,4,10,0)');
+      aura.addColorStop(0, 'rgba(56,189,248,0.055)');
+      aura.addColorStop(0.5, 'rgba(99,102,241,0.026)');
+      aura.addColorStop(1, 'rgba(1,2,7,0)');
       ctx.fillStyle = aura;
       ctx.fillRect(0, 0, width, height);
 
@@ -164,15 +164,18 @@ export function ParticleWaveBackground() {
       const colors = ['rgba(56,189,248,', 'rgba(129,140,248,', 'rgba(168,85,247,'];
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
-        const driftX = ((p.x * width) + time * (10 + p.depth * 26)) % (width + 8);
-        let x = driftX - 4;
-        const depthFlow = (time * (0.012 + p.depth * 0.035)) % 1;
-        const depthScale = 0.55 + p.depth * 0.9;
-        const base = height * (0.12 + p.depth * 0.72);
-        const amplitude = height * (0.018 + p.depth * 0.052);
-        const wave = Math.sin(p.x * 9.2 + time * 0.52 + p.phase) * amplitude
+        // Each particle travels from the distant horizon toward the viewer,
+        // expanding outward and growing as its simulated Z-depth approaches camera.
+        const depthFlow = (p.depth + time * (0.035 + p.depth * 0.025)) % 1;
+        const depthScale = 0.38 + depthFlow * 1.55;
+        const perspectiveSpread = 0.18 + depthFlow * 1.42;
+        const drift = Math.sin(time * (0.16 + depthFlow * 0.12) + p.phase) * (2 + depthFlow * 8);
+        let x = width * 0.5 + (p.x - 0.5) * width * perspectiveSpread + drift;
+        const base = height * (0.16 + depthFlow * 0.78);
+        const amplitude = height * (0.006 + depthFlow * 0.032);
+        const wave = Math.sin(p.x * 9.2 + time * (0.52 + depthFlow * 0.18) + p.phase) * amplitude
           + Math.sin(p.x * 17.5 - time * 0.31 + p.phase * 0.55) * amplitude * 0.2;
-        let y = base + wave - depthFlow * height * 0.08
+        let y = base + wave
           + (pointerY - 0.5) * height * 0.025 * depthScale
           + (pointerX - 0.5) * (p.x - 0.5) * height * 0.035 * depthScale;
         // Cursor repulsion: particles smoothly scatter away from the pointer's local sector.
@@ -189,7 +192,7 @@ export function ParticleWaveBackground() {
         }
         if (y < height * 0.04 || y > height * 0.98) continue;
         const ridge = 0.5 + 0.5 * Math.sin(p.x * 9.2 + time * 0.52 + p.phase);
-        const alpha = 0.16 + ridge * 0.34 * (0.35 + p.depth * 0.65);
+        const alpha = 0.07 + ridge * 0.28 * (0.25 + depthFlow * 0.75);
         const colorIndex = p.hue > 0.82 ? 2 : p.hue > 0.52 ? 1 : 0;
         ctx.fillStyle = colors[colorIndex] + alpha.toFixed(3) + ')';
         const radius = p.size * depthScale;
