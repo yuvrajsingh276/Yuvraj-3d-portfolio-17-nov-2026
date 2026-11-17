@@ -326,7 +326,7 @@ export class ShowcaseStage {
     this.rebuildOrbitalGuideRing(aspect, this.magneticRotation.angleDeg);
   }
 
-  /** Fixed 45-degree tilted oval; icons orbit around this stationary guide. */
+  /** Fixed 20-degree tilted oval; icons orbit around this stationary guide. */
   private rebuildOrbitalGuideRing(_aspect: number, _angleOffsetDeg: number) {
     if (!this.orbitGuideRing) return;
 
@@ -342,7 +342,7 @@ export class ShowcaseStage {
     const isPortrait = this.currentAspect < 0.85;
     const radiusX = isPortrait ? 4.7 : 7.55;
     const radiusY = isPortrait ? 5.2 : 3.25;
-    const tilt = Math.PI / 4;
+    const tilt = (20 * Math.PI) / 180;
     const points = Array.from({ length: 256 }, (_, i) => {
       const angle = (i / 256) * Math.PI * 2;
       const orbitY = Math.sin(angle) * radiusY;
@@ -376,10 +376,10 @@ export class ShowcaseStage {
       new THREE.MeshBasicMaterial({
         vertexColors: true,
         transparent: true,
-        opacity: 0.78,
+        opacity: 0.15,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
-        depthTest: false,
+        depthTest: true,
       })
     );
     const core = new THREE.Mesh(
@@ -387,14 +387,14 @@ export class ShowcaseStage {
       new THREE.MeshBasicMaterial({
         vertexColors: true,
         transparent: true,
-        opacity: 1,
+        opacity: 0.2,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
-        depthTest: false,
+        depthTest: true,
       })
     );
-    aura.renderOrder = -2;
-    core.renderOrder = -1;
+    aura.renderOrder = -20;
+    core.renderOrder = -19;
     this.orbitGuideRing.add(aura, core);
   }
 
