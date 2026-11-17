@@ -159,12 +159,12 @@ export function WorkGallery() {
         <div className="mb-9 flex items-end justify-between gap-5 px-6 sm:px-10 lg:px-16">
           <div>
             <p className="mb-3 text-[10px] font-medium uppercase tracking-[.32em] text-violet-300/75">02 / Selected projects</p>
-            <h2 className="text-[clamp(2rem,5vw,4.5rem)] font-semibold leading-none tracking-[-.055em] text-white">A few things I’ve made<span className="text-violet-300">.</span></h2>
+            <h2 className="portfolio-heading-section font-semibold leading-none tracking-[-.055em] text-white">A few things I’ve made<span className="text-violet-300">.</span></h2>
             <p className="mt-3 text-xs tracking-wide text-white/40 sm:text-sm">An ongoing collection of motion, image and digital craft.</p>
           </div>
           <div className="hidden items-center gap-2 sm:flex">
             <button type="button" onClick={() => moveTrack(-1)} aria-label="Scroll projects left" className="portfolio-icon-button rounded-full border border-white/15 text-white/70 transition hover:border-white/40 hover:bg-white/10 hover:text-white"><ArrowLeft size={17} /></button>
-            <button type="button" onClick={() => moveTrack(1)} aria-label="Scroll projects right" className="grid h-11 w-11 place-items-center rounded-full border border-white/15 text-white/70 transition hover:border-white/40 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"><ArrowRight size={17} /></button>
+            <button type="button" onClick={() => moveTrack(1)} aria-label="Scroll projects right" className="portfolio-icon-button rounded-full border border-white/15 text-white/70 transition hover:border-white/40 hover:bg-white/10 hover:text-white"><ArrowRight size={17} /></button>
           </div>
         </div>
 
@@ -226,7 +226,7 @@ export function WorkGallery() {
                 <button data-close-project type="button" onClick={closeProject} aria-label="Close project and return to gallery" className="portfolio-icon-button fixed right-5 top-5 z-[110] rounded-full border border-white/25 bg-black/40 text-white backdrop-blur-xl transition hover:rotate-90 hover:bg-white/15 sm:right-8 sm:top-8"><X size={21} /></button>
                 <div className="relative z-10 flex min-h-[78vh] flex-col justify-end px-6 pb-12 pt-28 sm:min-h-[88vh] sm:px-12 sm:pb-16 lg:px-20">
                   <p className="mb-4 text-[10px] font-semibold uppercase tracking-[.32em]" style={{ color: activeProject.accent }}>{activeProject.category}</p>
-                  <h2 className="max-w-4xl text-[clamp(2.7rem,8vw,7.5rem)] font-semibold leading-[.94] tracking-[-.06em]">{activeProject.title}</h2>
+                  <h2 className="max-w-4xl portfolio-heading-display font-semibold leading-[.94] tracking-[-.06em]">{activeProject.title}</h2>
                   <p className="mt-6 max-w-xl text-sm leading-relaxed text-white/65 sm:text-base">{activeProject.description}</p>
                   <div className="mt-8 flex items-center gap-3 text-[9px] uppercase tracking-[.25em] text-white/45"><span className="h-px w-10 bg-white/35" /> Scroll to explore the project</div>
                 </div>
