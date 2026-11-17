@@ -330,20 +330,19 @@ export function computeOrbitalLayout(
   angleOffsetDeg = 0
 ): OrbitalSlot[] {
   const isPortrait = aspect < 0.85;
-  const xStretch = isPortrait ? 0.92 : 1.46;
-  const yBoost = isPortrait ? 2.15 : 1.16;
-  const yRadius = 2.85;
-  // Evenly distribute every icon across the upper half of one shared orbital arc.
-  const angleOffset = (angleOffsetDeg * Math.PI) / 180;
+  // One shared, fixed 3D oval. Its plane is tilted 45 degrees around X.
+  // Every icon uses the same radii and evenly spaced catalog angles.
+  const radiusX = isPortrait ? 4.7 : 7.55;
+  const radiusY = isPortrait ? 5.2 : 3.25;
+  const tilt = Math.PI / 4;
 
   return tools.map((tool, index) => {
-    const progress = index / Math.max(1, tools.length - 1);
-    const rad = Math.PI * (0.12 + progress * 0.76) + angleOffset;
-    const x = Math.cos(rad) * tool.orbitRadius * xStretch;
-    const z = Math.sin(rad) * tool.orbitRadius * 0.22 + tool.zDepthBias;
-    const y = Math.sin(rad) * yRadius * yBoost + x * 0.045 + 0.15;
+    const rad = ((tool.angleDeg + angleOffsetDeg) * Math.PI) / 180;
+    const x = Math.cos(rad) * radiusX;
+    const orbitY = Math.sin(rad) * radiusY;
+    const y = orbitY * Math.cos(tilt);
+    const z = orbitY * Math.sin(tilt);
 
-    // Gentle varied 3D sculptural card tilt toward center/viewer like reference tiles
     const baseRotationY = Math.atan2(-x, 15 - z) * 0.48;
     const baseRotationX = Math.sin(rad) * 0.12 + (index % 2 === 0 ? 0.06 : -0.05);
     const baseRotationZ = Math.cos(rad) * -0.14;
