@@ -62,17 +62,20 @@
 }
 
 
-/* Seamless, lightweight horizontal experience ticker */
-@keyframes experience-scroll {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+/* One-way experience sequence: three text-only panels, then hold on the final panel */
+@keyframes experience-sequence {
+  0%, 27% { transform: translateX(0); }
+  34%, 60% { transform: translateX(-100vw); }
+  67%, 100% { transform: translateX(-200vw); }
 }
 .experience-track {
-  animation: experience-scroll 34s linear infinite;
+  width: 300vw;
+  animation: experience-sequence 18s ease-in-out 1 forwards;
   will-change: transform;
 }
 .experience-track.is-paused { animation-play-state: paused; }
+.experience-stage { height: 100vh; min-height: 100vh; }
+.about-overlay { scroll-margin-top: 0; }
 @media (prefers-reduced-motion: reduce) {
-  .experience-track { animation: none; }
-  .experience-marquee { overflow-x: auto; }
+  .experience-track { animation: none; transform: translateX(0); }
 }
