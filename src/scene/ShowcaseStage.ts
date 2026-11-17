@@ -189,8 +189,10 @@ export class ShowcaseStage {
 
     this.renderer = new THREE.WebGLRenderer({
       antialias: !this.isSoftwareGl,
+      alpha: true,
       powerPreference: 'high-performance',
     });
+    this.renderer.setClearColor(0x000000, 0);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.84;
@@ -209,7 +211,7 @@ export class ShowcaseStage {
     this.container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#080b18');
+    this.scene.background = null;
     this.scene.fog = new THREE.FogExp2('#080b18', 0.012);
 
     const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
@@ -321,7 +323,7 @@ export class ShowcaseStage {
 
     // Fluted violet-glass aurora backdrop with interactive cursor refraction
     this.flutedBg = createFlutedAuroraBackground();
-    this.scene.add(this.flutedBg.mesh);
+    this.flutedBg.mesh.visible = false;
 
     // Subtle thin tilted orbital guide ring around central typography
     this.initOrbitalGuideRing(aspect);
