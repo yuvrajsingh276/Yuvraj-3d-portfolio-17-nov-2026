@@ -324,61 +324,65 @@ export class ShowcaseStage {
     const xStretch = isPortrait ? 0.92 : 1.46;
     const yBoost = isPortrait ? 2.15 : 1.16;
     const tiltFactor = isPortrait ? 0.1 : 0.18;
-    const palette = ['#ff3b36', '#ffd84a', '#438cff', '#f5f8ff'];
+    const palette = ['#ff3b36', '#ffd84a', '#438cff', '#f5f8ff'].map((hex) => new THREE.Color(hex));
+
     this.orbitGuideRing = new THREE.Group();
+    // Keep the guide behind the icon carousel; it is a fixed, continuous line.
     this.orbitGuideRing.position.z = -2.4;
 
-    // Four separated, softly blurred particle arcs sit behind the full icon carousel.
-    for (let arc = 0; arc < 4; arc++) {
-      const count = 92;
-      const startAngle = (arc / 4) * Math.PI * 2 + 0.18;
-      const arcLength = Math.PI * 0.62;
-      const positions = new Float32Array(count * 3);
-      for (let i = 0; i < count; i++) {
-        const angle = startAngle + (i / (count - 1)) * arcLength;
-        const x = Math.cos(angle) * 5.38 * xStretch;
-        const z = Math.sin(angle) * 2.69 - 2.4;
-        const y = Math.sin(angle) * 2.85 * yBoost + x * tiltFactor + 0.15;
-        positions[i * 3] = x;
-        positions[i * 3 + 1] = y + Math.sin(angle * 11 + arc) * 0.035;
-        positions[i * 3 + 2] = z;
-      }
-
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-      const color = new THREE.Color(palette[arc]);
-
-      // Broad additive layer creates a soft glow; crisp points sit over it.
-      const glowMat = new THREE.PointsMaterial({
-        color,
-        size: 0.30,
-        map: this.textures.glowSprite,
-        transparent: true,
-        opacity: 0.30,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        depthTest: true,
-        sizeAttenuation: true,
-      });
-      const coreMat = new THREE.PointsMaterial({
-        color,
-        size: 0.105,
-        map: this.textures.particleSprite,
-        transparent: true,
-        opacity: 0.9,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        depthTest: true,
-        sizeAttenuation: true,
-      });
-
-      const glow = new THREE.Points(geo, glowMat);
-      const core = new THREE.Points(geo, coreMat);
-      glow.renderOrder = 1;
-      core.renderOrder = 2;
-      this.orbitGuideRing.add(glow, core);
+    const points: THREE.Vector3[] = [];
+    const divisions = 240;
+    for (let i = 0; i < divisions; i++) {
+      const angle = (i / divisions) * Math.PI * 2;
+      const x = Math.cos(angle) * 5.38 * xStretch;
+      const y = Math.sin(angle) * 2.85 * yBoost + x * tiltFactor + 0.15;
+      const z = Math.sin(angle) * 2.69;
+      points.push(new THREE.Vector3(x, y, z));
     }
 
+    const curve = new THREE.CatmullRomCurve3(points, true, 'centripetal');
+    const addGradient = (geometry: THREE.TubeGeometry) => {
+      const position = geometry.getAttribute('position');
+      const colors = new Float32Array(position.count * 3);
+      const color = new THREE.Color();
+      for (let i = 0; i < position.count; i++) {
+        const t = (i / Math.max(1, position.count - 1)) * palette.length;
+        const segment = Math.floor(t) % palette.length;
+        const mix = t - Math.floor(t);
+        color.copy(palette[segment]).lerp(palette[(segment + 1) % palette.length], mix);
+        colors[i * 3] = color.r;
+        colors[i * 3 + 1] = color.g;
+        colors[i * 3 + 2] = color.b;
+      }
+      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    };
+
+    // A broad translucent tube supplies the soft halo; a fine tube defines the line.
+    const glowGeometry = new THREE.TubeGeometry(curve, divisions, 0.075, 8, true);
+    addGradient(glowGeometry);
+    const glow = new THREE.Mesh(glowGeometry, new THREE.MeshBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.22,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: true,
+    }));
+    glow.renderOrder = 1;
+
+    const lineGeometry = new THREE.TubeGeometry(curve, divisions, 0.018, 6, true);
+    addGradient(lineGeometry);
+    const line = new THREE.Mesh(lineGeometry, new THREE.MeshBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.92,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: true,
+    }));
+    line.renderOrder = 2;
+
+    this.orbitGuideRing.add(glow, line);
     this.constellationGroup.add(this.orbitGuideRing);
   }
 
@@ -967,11 +971,7 @@ export class ShowcaseStage {
 
   private updateScene(dt: number) {
     const t = this.elapsedSec;
-    if (this.orbitGuideRing && !this.reducedMotion) {
-      // Clearly visible slow orbit; each separated arc travels behind the icon ring.
-      this.orbitGuideRing.rotation.y = t * 0.22;
-      this.orbitGuideRing.rotation.z = Math.sin(t * 0.32) * 0.025;
-    }
+    // Orbit guide intentionally remains stationary.
 
     // 1. Smooth continuous orbital auto-scrolling + magnetic 36-deg alignment when hovered/released
     const shouldAutoScroll =
@@ -1092,8 +1092,9 @@ export class ShowcaseStage {
 
       const halo = this.iconHalos.get(id);
       if (halo) {
-        halo.material.opacity = bloomCfg.haloOpacity * (1 + Math.max(0, nextState.glowBoost) * 0.55);
-        halo.visible = bloomCfg.haloOpacity > 0.005 || nextState.glowBoost > 0.05;
+        // Persistent soft bloom for every icon, with a subtle extra lift on hover.
+        halo.material.opacity = 0.42 + Math.max(0, nextState.glowBoost) * 0.16;
+        halo.visible = true;
       }
     }
 
