@@ -62,20 +62,23 @@
 }
 
 
-/* One-way experience sequence: three text-only panels, then hold on the final panel */
+
+/* Three full-viewport experience slides, played once and held on the final slide */
 @keyframes experience-sequence {
-  0%, 27% { transform: translateX(0); }
-  34%, 60% { transform: translateX(-100vw); }
-  67%, 100% { transform: translateX(-200vw); }
+  0%, 25% { transform: translate3d(0,0,0); }
+  33.333%, 58.333% { transform: translate3d(-100vw,0,0); }
+  66.666%, 100% { transform: translate3d(-200vw,0,0); }
 }
+.experience-about-stack { position: relative; isolation: isolate; }
+.experience-stage { height: 100vh; min-height: 100vh; }
 .experience-track {
+  display: flex;
   width: 300vw;
-  animation: experience-sequence 18s ease-in-out 1 forwards;
+  animation: experience-sequence 21s ease-in-out 1 forwards;
   will-change: transform;
 }
 .experience-track.is-paused { animation-play-state: paused; }
-.experience-stage { height: 100vh; min-height: 100vh; }
-.about-overlay { scroll-margin-top: 0; }
+.about-overlay { position: relative; z-index: 30; }
 @media (prefers-reduced-motion: reduce) {
-  .experience-track { animation: none; transform: translateX(0); }
+  .experience-track { animation: none; transform: translate3d(0,0,0); }
 }
