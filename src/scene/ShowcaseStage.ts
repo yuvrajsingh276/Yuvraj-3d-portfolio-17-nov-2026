@@ -342,14 +342,15 @@ export class ShowcaseStage {
     const slots = computeOrbitalLayout(TOOLS_CATALOG, aspect, angleOffsetDeg);
     if (slots.length < 3) return;
 
-    // Keep the guide as a clean, wide oval behind the icon arrangement.
+    // A slim horizontal oval sits beneath the complete upper row of evenly spaced icons.
     const centerX = slots.reduce((sum, slot) => sum + slot.position[0], 0) / slots.length;
-    const centerY = slots.reduce((sum, slot) => sum + slot.position[1], 0) / slots.length;
-    const centerZ = slots.reduce((sum, slot) => sum + slot.position[2], 0) / slots.length - 0.34;
-    const radiusX = Math.max(...slots.map((slot) => Math.abs(slot.position[0] - centerX))) * 1.08;
-    const radiusY = Math.max(...slots.map((slot) => Math.abs(slot.position[1] - centerY))) * 1.08;
-    const ovalPoints = Array.from({ length: 160 }, (_, i) => {
-      const angle = (i / 160) * Math.PI * 2;
+    const lowestIconY = Math.min(...slots.map((slot) => slot.position[1]));
+    const centerY = lowestIconY - 0.42;
+    const centerZ = Math.min(...slots.map((slot) => slot.position[2])) - 0.22;
+    const radiusX = Math.max(...slots.map((slot) => Math.abs(slot.position[0] - centerX))) * 1.06;
+    const radiusY = 0.14;
+    const ovalPoints = Array.from({ length: 192 }, (_, i) => {
+      const angle = (i / 192) * Math.PI * 2;
       return new THREE.Vector3(
         centerX + Math.cos(angle) * radiusX,
         centerY + Math.sin(angle) * radiusY,
@@ -377,18 +378,18 @@ export class ShowcaseStage {
 
     // Very slim soft aura beneath an even finer, crisp gradient core.
     const aura = new THREE.Mesh(
-      makeGradientTube(0.014),
+      makeGradientTube(0.009),
       new THREE.MeshBasicMaterial({
         vertexColors: true,
         transparent: true,
-        opacity: 0.48,
+        opacity: 0.72,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         depthTest: true,
       })
     );
     const core = new THREE.Mesh(
-      makeGradientTube(0.0035),
+      makeGradientTube(0.0025),
       new THREE.MeshBasicMaterial({
         vertexColors: true,
         transparent: true,
@@ -398,8 +399,10 @@ export class ShowcaseStage {
         depthTest: true,
       })
     );
-    aura.renderOrder = 1;
-    core.renderOrder = 2;
+    aura.renderOrder = -2;
+    core.renderOrder = -1;
+    (aura.material as THREE.Material).depthTest = false;
+    (core.material as THREE.Material).depthTest = false;
     this.orbitGuideRing.add(aura, core);
   }
 
