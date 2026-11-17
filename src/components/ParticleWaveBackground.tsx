@@ -36,7 +36,7 @@ export function ParticleWaveBackground() {
       seed = (seed * 16807) % 2147483647;
       return (seed - 1) / 2147483646;
     };
-    const gridCellSize = 54;
+    const gridCellSize = 108;
     let gridCols = 1;
     let gridRows = 1;
     let gridOpacity: number[] = [];
