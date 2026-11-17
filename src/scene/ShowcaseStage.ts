@@ -646,7 +646,6 @@ export class ShowcaseStage {
     canvas.addEventListener('pointerdown', this.handlePointerDown);
     canvas.addEventListener('pointerup', this.handlePointerUp);
     canvas.addEventListener('pointerleave', this.handlePointerLeave);
-    canvas.addEventListener('wheel', this.handleWheel, { passive: false });
     canvas.addEventListener('webglcontextlost', this.handleContextLost);
     canvas.addEventListener('webglcontextrestored', this.handleContextRestored);
   }
@@ -658,7 +657,6 @@ export class ShowcaseStage {
     canvas.removeEventListener('pointerdown', this.handlePointerDown);
     canvas.removeEventListener('pointerup', this.handlePointerUp);
     canvas.removeEventListener('pointerleave', this.handlePointerLeave);
-    canvas.removeEventListener('wheel', this.handleWheel);
     canvas.removeEventListener('webglcontextlost', this.handleContextLost);
     canvas.removeEventListener('webglcontextrestored', this.handleContextRestored);
   }
@@ -853,15 +851,6 @@ export class ShowcaseStage {
       this.callbacks.onHoverChange?.(null);
     }
     this.renderer.domElement.style.cursor = this.selectedToolId ? 'default' : 'grab';
-  };
-
-  private handleWheel = (e: WheelEvent) => {
-    e.preventDefault();
-    const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
-    this.magneticRotation.velocityDeg = Math.max(
-      -180,
-      Math.min(180, this.magneticRotation.velocityDeg + delta * 0.18)
-    );
   };
 
   // --- Public Control API ---
