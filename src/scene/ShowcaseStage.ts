@@ -320,70 +320,75 @@ export class ShowcaseStage {
   }
 
   private initOrbitalGuideRing(aspect: number) {
-    const isPortrait = aspect < 0.85;
-    const xStretch = isPortrait ? 0.92 : 1.46;
-    const yBoost = isPortrait ? 2.15 : 1.16;
-    const tiltFactor = isPortrait ? 0.1 : 0.18;
-    const palette = ['#ff3b36', '#ffd84a', '#438cff', '#f5f8ff'].map((hex) => new THREE.Color(hex));
-
     this.orbitGuideRing = new THREE.Group();
-    // Keep the guide behind the icon carousel; it is a fixed, continuous line.
-    this.orbitGuideRing.position.z = -2.4;
+    this.constellationGroup.add(this.orbitGuideRing);
+    this.rebuildOrbitalGuideRing(aspect, this.magneticRotation.angleDeg);
+  }
 
-    const points: THREE.Vector3[] = [];
-    const divisions = 240;
-    for (let i = 0; i < divisions; i++) {
-      const angle = (i / divisions) * Math.PI * 2;
-      const x = Math.cos(angle) * 5.38 * xStretch;
-      const y = Math.sin(angle) * 2.85 * yBoost + x * tiltFactor + 0.15;
-      const z = Math.sin(angle) * 2.69;
-      points.push(new THREE.Vector3(x, y, z));
+  /** A static gradient tube traced through the same anchor points as the icons. */
+  private rebuildOrbitalGuideRing(aspect: number, angleOffsetDeg: number) {
+    if (!this.orbitGuideRing) return;
+
+    for (const child of [...this.orbitGuideRing.children]) {
+      this.orbitGuideRing.remove(child);
+      const mesh = child as THREE.Mesh;
+      mesh.geometry?.dispose();
+      const material = mesh.material;
+      if (Array.isArray(material)) material.forEach((item) => item.dispose());
+      else material?.dispose();
     }
 
-    const curve = new THREE.CatmullRomCurve3(points, true, 'centripetal');
-    const addGradient = (geometry: THREE.TubeGeometry) => {
-      const position = geometry.getAttribute('position');
-      const colors = new Float32Array(position.count * 3);
-      const color = new THREE.Color();
-      for (let i = 0; i < position.count; i++) {
-        const t = (i / Math.max(1, position.count - 1)) * palette.length;
-        const segment = Math.floor(t) % palette.length;
-        const mix = t - Math.floor(t);
-        color.copy(palette[segment]).lerp(palette[(segment + 1) % palette.length], mix);
-        colors[i * 3] = color.r;
-        colors[i * 3 + 1] = color.g;
-        colors[i * 3 + 2] = color.b;
+    const slots = computeOrbitalLayout(TOOLS_CATALOG, aspect, angleOffsetDeg);
+    if (slots.length < 3) return;
+
+    // Follow the actual icon positions, slightly behind their front surfaces.
+    const points = slots.map((slot) =>
+      new THREE.Vector3(slot.position[0], slot.position[1], slot.position[2] - 0.52)
+    );
+    const curve = new THREE.CatmullRomCurve3(points, true, 'centripetal', 0.35);
+    const tubularSegments = Math.max(240, slots.length * 36);
+    const radialSegments = 6;
+
+    const makeGradientTube = (radius: number) => {
+      const geometry = new THREE.TubeGeometry(curve, tubularSegments, radius, radialSegments, true);
+      const colors = new Float32Array(geometry.getAttribute('position').count * 3);
+      const verticesPerRing = radialSegments + 1;
+      for (let i = 0; i < colors.length / 3; i++) {
+        const t = Math.floor(i / verticesPerRing) / tubularSegments;
+        const [r, g, b] = sampleYellowRedOrangeBlueGradient(t);
+        colors[i * 3] = r;
+        colors[i * 3 + 1] = g;
+        colors[i * 3 + 2] = b;
       }
       geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      return geometry;
     };
 
-    // A broad translucent tube supplies the soft halo; a fine tube defines the line.
-    const glowGeometry = new THREE.TubeGeometry(curve, divisions, 0.075, 8, true);
-    addGradient(glowGeometry);
-    const glow = new THREE.Mesh(glowGeometry, new THREE.MeshBasicMaterial({
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.22,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      depthTest: true,
-    }));
+    const glow = new THREE.Mesh(
+      makeGradientTube(0.105),
+      new THREE.MeshBasicMaterial({
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.24,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        depthTest: true,
+      })
+    );
+    const line = new THREE.Mesh(
+      makeGradientTube(0.024),
+      new THREE.MeshBasicMaterial({
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.94,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        depthTest: true,
+      })
+    );
     glow.renderOrder = 1;
-
-    const lineGeometry = new THREE.TubeGeometry(curve, divisions, 0.018, 6, true);
-    addGradient(lineGeometry);
-    const line = new THREE.Mesh(lineGeometry, new THREE.MeshBasicMaterial({
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.92,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      depthTest: true,
-    }));
     line.renderOrder = 2;
-
     this.orbitGuideRing.add(glow, line);
-    this.constellationGroup.add(this.orbitGuideRing);
   }
 
   private initScatterBurstParticles() {
@@ -507,13 +512,13 @@ export class ShowcaseStage {
       map: this.textures.glowSprite,
       color: entry.spec.accentHex,
       transparent: true,
-      opacity: Math.max(cfg.haloOpacity, 0.50),
+      opacity: Math.max(cfg.haloOpacity, 0.58),
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       depthTest: true,
     });
     const sprite = new THREE.Sprite(haloMat);
-    sprite.scale.set(3.8, 3.8, 1);
+    sprite.scale.set(3.45, 3.45, 1);
     sprite.position.set(0, 0, -0.35);
     sprite.visible = true;
     entry.bodyGroup.add(sprite);
@@ -640,6 +645,7 @@ export class ShowcaseStage {
     // Recompute responsive orbital spread and overview camera distance so mobile viewports frame cleanly
     const slots = computeOrbitalLayout(TOOLS_CATALOG, aspect, this.magneticRotation.angleDeg);
     this.lastAppliedAngleDeg = this.magneticRotation.angleDeg;
+    this.rebuildOrbitalGuideRing(aspect, this.magneticRotation.angleDeg);
     for (let i = 0; i < this.icons.length; i++) {
       this.icons[i].anchorGroup.position.set(
         slots[i].position[0],
@@ -996,6 +1002,7 @@ export class ShowcaseStage {
         this.currentAspect,
         this.magneticRotation.angleDeg
       );
+      this.rebuildOrbitalGuideRing(this.currentAspect, this.magneticRotation.angleDeg);
       for (let i = 0; i < this.icons.length; i++) {
         const slot = slots[i];
         this.icons[i].anchorGroup.position.set(
