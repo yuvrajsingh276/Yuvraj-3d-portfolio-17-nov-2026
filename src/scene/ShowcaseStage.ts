@@ -175,7 +175,7 @@ export class ShowcaseStage {
 
     this.renderer = new THREE.WebGLRenderer({
       alpha: true,
-      antialias: !this.isSoftwareGl,
+      antialias: false,
       powerPreference: 'high-performance',
       preserveDrawingBuffer: false,
     });
@@ -183,11 +183,11 @@ export class ShowcaseStage {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.84;
     this.renderer.setPixelRatio(
-      this.isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 1.35)
+      Math.min(window.devicePixelRatio || 1, 1.1)
     );
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.setSize(width, height);
-    this.renderer.shadowMap.enabled = !this.isSoftwareGl;
+    this.renderer.shadowMap.enabled = false;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.renderer.domElement.style.display = 'block';
