@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ArrowLeft, ArrowRight, ArrowUpRight, X } from 'lucide-react';
 
@@ -130,13 +131,12 @@ export function WorkGallery() {
     };
   }, [activeProject, closeProject]);
 
-  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+  const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType === 'touch' || event.button !== 0) return;
     const track = trackRef.current;
     if (!track) return;
     drag.current = { active: true, moved: false, startX: event.clientX, scrollLeft: track.scrollLeft };
     setDragging(true);
-    track.setPointerCapture(event.pointerId);
   };
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!drag.current.active || !trackRef.current) return;
@@ -184,7 +184,7 @@ export function WorkGallery() {
               whileFocus={reduceMotion ? undefined : { y: -8, scale: 1.025 }}
               transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
               aria-label={`Open project: ${project.title}`}
-              className={`group relative w-[64vw] max-w-[310px] min-w-[220px] shrink-0 overflow-hidden rounded-[5px] border border-white/[.12] bg-[#10121b] text-left shadow-[0_18px_55px_rgba(0,0,0,.32)] outline-none transition-[filter,border-color] duration-500 hover:border-white/35 focus-visible:border-violet-300 focus-visible:ring-2 focus-visible:ring-violet-300/70 ${index % 2 === 0 ? 'mt-0' : 'mt-14'}`}
+              className={`group relative w-[64vw] max-w-[310px] min-w-[220px] shrink-0 overflow-hidden rounded-[5px] border border-white/[.12] bg-[#10121b] text-left shadow-[0_18px_55px_rgba(0,0,0,.32)] outline-none transition-[filter,border-color] duration-500 opacity-80 transition-opacity group-hover/gallery:opacity-45 hover:!opacity-100 focus-visible:!opacity-100 hover:border-white/35 focus-visible:border-violet-300 focus-visible:ring-2 focus-visible:ring-violet-300/70 ${index % 2 === 0 ? 'mt-0' : 'mt-14'}`}
               style={{ aspectRatio: '0.69' }}
             >
               <Artwork mood={project.mood} label={`PROJECT ${project.id}`} className="absolute inset-0 h-full w-full transition-transform duration-700 group-hover:scale-[1.04]" />
