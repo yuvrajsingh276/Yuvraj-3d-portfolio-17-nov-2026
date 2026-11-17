@@ -165,7 +165,7 @@ export function ParticleWaveBackground() {
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         const driftX = ((p.x * width) + time * (18 + p.depth * 18)) % (width + 8);
-        const x = driftX - 4;
+        let x = driftX - 4;
         const base = height * (0.27 + p.depth * 0.48);
         const amplitude = height * (0.035 + p.depth * 0.055);
         const wave = Math.sin(p.x * 9.2 + time * 0.52 + p.phase) * amplitude
@@ -180,6 +180,7 @@ export function ParticleWaveBackground() {
           const repelRadius = Math.min(width, height) * 0.19;
           if (distance < repelRadius && distance > 0.001) {
             const force = (1 - distance / repelRadius) * 34;
+            x += (dx / distance) * force;
             y += (dy / distance) * force;
           }
         }
