@@ -141,6 +141,7 @@ export class ShowcaseStage {
   private lastTimeMs = 0;
   private elapsedSec = 0;
   private disposed = false;
+  private contextLost = false;
 
   constructor(container: HTMLElement, callbacks: ShowcaseCallbacks = {}) {
     this.container = container;
@@ -663,11 +664,17 @@ export class ShowcaseStage {
 
   private handleContextLost = (e: Event) => {
     e.preventDefault();
+    this.contextLost = true;
+    cancelAnimationFrame(this.frameId);
     this.callbacks.onContextLostChange?.(true);
   };
 
   private handleContextRestored = () => {
+    if (this.disposed) return;
+    this.contextLost = false;
+    this.lastTimeMs = performance.now();
     this.callbacks.onContextLostChange?.(false);
+    this.tick();
   };
 
   private handleResize = () => {
@@ -985,7 +992,7 @@ export class ShowcaseStage {
   }
 
   private tick = () => {
-    if (this.disposed) return;
+    if (this.disposed || this.contextLost) return;
 
     const now = performance.now();
     const rawDt = (now - this.lastTimeMs) / 1000;
