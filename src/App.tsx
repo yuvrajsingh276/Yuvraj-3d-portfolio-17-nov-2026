@@ -203,16 +203,16 @@ export default function App() {
       <section
         id="intro-video"
         aria-label="Video introduction"
-        className="relative z-20 mt-[100vh] flex min-h-screen w-full items-center justify-center border-t border-white/[0.06] bg-[#070912] px-6 py-24"
+        className="relative z-20 flex min-h-[78svh] w-full items-center justify-center border-t border-white/[0.06] bg-[#070912] px-5 py-12 sm:min-h-screen sm:px-6 sm:py-20"
       >
         <div className="mx-auto w-full max-w-6xl">
           <div className="absolute inset-0 overflow-hidden bg-[radial-gradient(ellipse_at_50%_42%,rgba(111,76,190,0.20),transparent_55%),linear-gradient(135deg,#111525,#080a12_65%,#160d19)]">
             <div className="absolute inset-0 opacity-25" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
             <div className="absolute inset-0 bg-gradient-to-b from-[#070912]/35 via-transparent to-[#070912]/55" />
           </div>
-          <div className="relative z-10 flex min-h-[calc(100vh-12rem)] flex-col items-center justify-center text-center">
+          <div className="relative z-10 flex min-h-[calc(78svh-6rem)] sm:min-h-[calc(100vh-10rem)] flex-col items-center justify-center text-center">
             <span className="mb-5 text-[11px] font-medium uppercase tracking-[0.3em] text-violet-300/70">01 / INTRODUCTION</span>
-            <span className="text-[clamp(3.5rem,12vw,9rem)] font-semibold tracking-[0.18em] text-white/80">VIDEO</span>
+            <span className="text-[clamp(2.8rem,12vw,9rem)] font-semibold tracking-[0.12em] text-white/80 sm:tracking-[0.18em]">VIDEO</span>
             <span className="mt-4 text-[10px] uppercase tracking-[0.28em] text-white/35">Full-screen video placeholder</span>
           </div>
         </div>
