@@ -28,7 +28,7 @@ export function ExperienceAbout() {
           <p className="mb-4 text-[10px] font-semibold tracking-[0.3em] text-violet-300/75">03 / CAREER JOURNEY</p>
           <div className="flex items-end justify-between gap-5">
             <div>
-              <h2 className="text-[clamp(2.5rem,7vw,5.5rem)] font-semibold leading-[0.95] tracking-[-0.055em] text-white">Experience<span className="text-violet-300">.</span></h2>
+              <h2 className="portfolio-heading-section font-semibold leading-[0.95] tracking-[-0.055em] text-white">Experience<span className="text-violet-300">.</span></h2>
               <p className="mt-4 max-w-md text-sm leading-relaxed text-white/45">A journey across broadcast, product visualisation and brand storytelling.</p>
             </div>
             <button type="button" onClick={() => setPaused(v => !v)} aria-label={paused ? 'Play experience sequence' : 'Pause experience sequence'} className="portfolio-icon-button mb-1 shrink-0 rounded-full border border-white/15 text-white/75 transition hover:border-violet-300/60 hover:text-violet-200">
@@ -42,7 +42,7 @@ export function ExperienceAbout() {
               <article key={item.period} className="flex min-h-[260px] w-screen shrink-0 basis-[100vw] flex-col justify-center px-8 sm:min-h-[300px] sm:px-[12vw]">
                 <div className="max-w-5xl">
                   <p className="mb-5 text-[11px] font-semibold tracking-[0.28em] text-violet-300/80">{item.period} <span className="text-white/25">/ 03</span></p>
-                  <h3 className="text-[clamp(2.3rem,8vw,6.5rem)] font-semibold leading-[0.98] tracking-[-0.06em] text-white">{item.company}</h3>
+                  <h3 className="portfolio-heading-company font-semibold leading-[0.98] tracking-[-0.06em] text-white">{item.company}</h3>
                   <p className="mt-5 text-lg font-medium text-white/75 sm:text-2xl">{item.role}</p>
                   <p className="mt-3 text-[11px] tracking-[0.18em] text-white/40">{item.type}</p>
                   <p className="mt-5 max-w-xl text-sm leading-relaxed text-white/45">{item.description}</p>
@@ -60,7 +60,7 @@ export function ExperienceAbout() {
           <div className="relative mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1.15fr_0.85fr] lg:gap-20">
             <div>
               <p className="mb-5 text-[10px] font-semibold tracking-[0.3em] text-violet-300/75">04 / A LITTLE ABOUT ME</p>
-              <h2 className="max-w-3xl text-[clamp(2.8rem,7vw,6rem)] font-semibold leading-[0.96] tracking-[-0.06em] text-white">Designing ideas<br/>into <span className="text-violet-300">experiences.</span></h2>
+              <h2 className="max-w-3xl portfolio-heading-display font-semibold leading-[0.96] tracking-[-0.06em] text-white">Designing ideas<br/>into <span className="text-violet-300">experiences.</span></h2>
               <p className="mt-8 max-w-2xl text-[15px] leading-[1.9] text-white/55">I’m Yuvraj Singh, a Senior Motion Graphics and 3D Designer with 12+ years of experience creating brand narratives, cinematic visuals and engaging digital experiences. I bring together 2D/3D motion, CGI, product visualisation and emerging AI workflows to turn ideas into memorable visual stories.</p>
               <div className="mt-9 flex flex-wrap gap-3">
                 {['3D & CGI', 'Motion Design', 'Brand Storytelling', 'AI-Enabled Workflows'].map(tag => <span key={tag} className="rounded-full border border-white/10 bg-white/[0.035] px-4 py-2 text-[11px] tracking-wide text-white/65">{tag}</span>)}
