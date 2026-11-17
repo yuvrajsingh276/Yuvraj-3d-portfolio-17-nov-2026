@@ -73,7 +73,7 @@ export default function App() {
           e.currentTarget.style.setProperty('--pointer-x', e.clientX + 'px');
           e.currentTarget.style.setProperty('--pointer-y', e.clientY + 'px');
         }}
-        className="relative isolate h-screen w-screen overflow-hidden bg-[#02040a]"
+        className="relative isolate h-screen w-screen overflow-hidden bg-[#010207]"
         data-selected-tool={selectedTool?.id ?? 'none'}
         data-hovered-tool={hoveredTool?.id ?? 'none'}
         data-motion-paused={String(motionPaused)}
