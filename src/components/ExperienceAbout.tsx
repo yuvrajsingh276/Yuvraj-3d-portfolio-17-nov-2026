@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { PointerEvent as ReactPointerEvent } from 'react';
-import { ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUpRight, Mail, Pause, Play } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowDownToLine, ArrowUpRight, Mail } from 'lucide-react';
 
 const experience = [
   { company: '1st India News', role: 'Broadcast / Motion Graphics Designer', type: 'Broadcast · News Graphics', period: '01', description: 'Creating broadcast visuals, motion graphics and on-air design.' },
@@ -10,130 +9,77 @@ const experience = [
 
 export function ExperienceAbout() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const [hovered, setHovered] = useState(false);
-  const [started, setStarted] = useState(false);
-  const [dragOffset, setDragOffset] = useState(0);
   const stageRef = useRef<HTMLElement | null>(null);
-  const pointerStart = useRef<{ x: number; y: number; pointerId: number } | null>(null);
-  const activeIndexRef = useRef(0);
-
-  useEffect(() => { activeIndexRef.current = activeIndex; }, [activeIndex]);
 
   useEffect(() => {
-    const stage = stageRef.current;
-    if (!stage || typeof IntersectionObserver === 'undefined') { setStarted(true); return; }
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) { setStarted(true); observer.disconnect(); }
-    }, { threshold: 0.2 });
-    observer.observe(stage);
-    return () => observer.disconnect();
+    let frame = 0;
+    const updateFromScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const stage = stageRef.current;
+        if (!stage) return;
+        const scrollable = Math.max(1, stage.offsetHeight - window.innerHeight);
+        const progress = Math.max(0, Math.min(0.9999, -stage.getBoundingClientRect().top / scrollable));
+        const nextIndex = Math.min(experience.length - 1, Math.floor(progress * experience.length));
+        setActiveIndex(current => current === nextIndex ? current : nextIndex);
+      });
+    };
+    updateFromScroll();
+    window.addEventListener('scroll', updateFromScroll, { passive: true });
+    window.addEventListener('resize', updateFromScroll);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', updateFromScroll);
+      window.removeEventListener('resize', updateFromScroll);
+    };
   }, []);
-
-  useEffect(() => {
-    if (!started || paused || hovered || activeIndex === experience.length - 1) return;
-    const timer = window.setTimeout(() => {
-      if (activeIndex >= experience.length - 2) {
-        setActiveIndex(experience.length - 1);
-        setPaused(true);
-      } else {
-        setActiveIndex(current => Math.min(current + 1, experience.length - 1));
-      }
-    }, 5600);
-    return () => window.clearTimeout(timer);
-  }, [started, paused, hovered, activeIndex]);
-
-  const goTo = useCallback((index: number) => {
-    setActiveIndex(Math.max(0, Math.min(index, experience.length - 1)));
-    setDragOffset(0);
-  }, []);
-  const previous = () => { setPaused(true); goTo(activeIndexRef.current - 1); };
-  const next = () => { setPaused(true); goTo(activeIndexRef.current + 1); };
-  const togglePlayback = () => {
-    if (activeIndexRef.current === experience.length - 1 && paused) goTo(0);
-    setPaused(value => !value);
-  };
-
-  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.pointerType === 'mouse' && event.button !== 0) return;
-    pointerStart.current = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
-    setPaused(true);
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
-  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!pointerStart.current || pointerStart.current.pointerId !== event.pointerId) return;
-    const dx = event.clientX - pointerStart.current.x;
-    setDragOffset(Math.max(-180, Math.min(180, dx * 0.72)));
-  };
-  const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!pointerStart.current || pointerStart.current.pointerId !== event.pointerId) return;
-    const dx = event.clientX - pointerStart.current.x;
-    if (Math.abs(dx) > 48) goTo(activeIndexRef.current + (dx < 0 ? 1 : -1));
-    setDragOffset(0);
-    pointerStart.current = null;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-  };
 
   return (
-    <div className="experience-about-stack relative z-20">
-      <section ref={stageRef} id="experience" aria-label="Professional experience" className="experience-stage relative z-20 flex min-h-[min(100svh,900px)] w-full flex-col justify-center overflow-hidden border-t border-white/[0.06] bg-[#050711] py-12 sm:min-h-screen sm:py-16">
-        <div className="mx-auto mb-7 w-full max-w-7xl px-5 sm:mb-10 sm:px-8 lg:px-12">
-          <p className="mb-3 text-[9px] font-semibold tracking-[0.28em] text-violet-300/75 sm:text-[10px]">03 / CAREER JOURNEY</p>
-          <div className="flex items-end justify-between gap-4">
+    <div className="experience-about-stack relative z-40 -mt-[100vh]">
+      <section ref={stageRef} id="experience" aria-label="Professional experience" className="experience-pin relative h-[300vh] w-full">
+        <div className="experience-stage sticky top-0 z-20 flex h-screen w-full flex-col justify-center overflow-hidden border-t border-white/[0.06] bg-[#050711] py-10 sm:py-14">
+          <div className="mx-auto mb-7 w-full max-w-7xl px-5 sm:mb-10 sm:px-8 lg:px-12">
+            <p className="mb-3 text-[9px] font-semibold tracking-[0.28em] text-violet-300/75 sm:text-[10px]">03 / CAREER JOURNEY</p>
             <div>
               <h2 className="portfolio-heading-section font-semibold leading-[0.95] tracking-[-0.055em] text-white">Experience<span className="text-violet-300">.</span></h2>
-              <p className="mt-2 max-w-md text-xs leading-relaxed text-white/45 sm:mt-3 sm:text-sm">A journey across broadcast, product visualisation and brand storytelling.</p>
+              <p className="mt-2 max-w-md text-xs leading-relaxed text-white/45 sm:mt-3 sm:text-sm">Scroll through the milestones of my career.</p>
             </div>
-            <button type="button" onClick={togglePlayback} aria-label={paused ? 'Play experience sequence' : 'Pause experience sequence'} className="portfolio-icon-button mb-1 shrink-0 rounded-full border border-white/15 text-white/75 transition hover:border-violet-300/60 hover:text-violet-200">
-              {paused ? <Play size={15} /> : <Pause size={15} />}
-            </button>
           </div>
-        </div>
 
-        <div className="experience-marquee w-full overflow-hidden" onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
-          <div
-            className="experience-track flex"
-            style={{ transform: `translate3d(calc(-${activeIndex * 33.333333}% + ${dragOffset}px),0,0)`, transition: pointerStart.current ? 'none' : 'transform 850ms cubic-bezier(.22,1,.36,1)' }}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
-            onKeyDown={(event) => { if (event.key === 'ArrowRight') next(); if (event.key === 'ArrowLeft') previous(); }}
-            role="group"
-            aria-label="Experience timeline. Swipe or drag to move between roles."
-            tabIndex={0}
-          >
-            {experience.map((item, index) => (
-              <article key={item.period} aria-hidden={activeIndex !== index} className="flex min-h-[250px] w-1/3 shrink-0 basis-1/3 flex-col justify-center px-5 sm:min-h-[300px] sm:px-[10vw]">
-                <div className="mx-auto w-full max-w-5xl">
-                  <p className="mb-4 text-[10px] font-semibold tracking-[0.26em] text-violet-300/80 sm:mb-5 sm:text-[11px]">{item.period} <span className="text-white/25">/ 03</span></p>
-                  <h3 className="portfolio-heading-company font-semibold leading-[0.98] tracking-[-0.06em] text-white">{item.company}</h3>
-                  <p className="mt-3 text-base font-medium text-white/75 sm:mt-5 sm:text-2xl">{item.role}</p>
-                  <p className="mt-2 text-[9px] tracking-[0.14em] text-white/40 sm:mt-3 sm:text-[11px] sm:tracking-[0.18em]">{item.type}</p>
-                  <p className="mt-3 max-w-xl text-xs leading-relaxed text-white/45 sm:mt-5 sm:text-sm">{item.description}</p>
-                </div>
-              </article>
-            ))}
+          <div className="experience-marquee w-full overflow-hidden">
+            <div
+              className="experience-track flex"
+              style={{ transform: `translate3d(-${activeIndex * 33.333333}%,0,0)`, transition: 'transform 850ms cubic-bezier(.22,1,.36,1)' }}
+              aria-live="polite"
+              aria-label="Professional experience timeline"
+            >
+              {experience.map((item, index) => (
+                <article key={item.period} aria-hidden={activeIndex !== index} className="flex min-h-[250px] w-1/3 shrink-0 basis-1/3 flex-col justify-center px-5 sm:min-h-[300px] sm:px-[10vw]">
+                  <div className="mx-auto w-full max-w-5xl">
+                    <p className="mb-4 text-[10px] font-semibold tracking-[0.26em] text-violet-300/80 sm:mb-5 sm:text-[11px]">{item.period} <span className="text-white/25">/ 03</span></p>
+                    <h3 className="portfolio-heading-company font-semibold leading-[0.98] tracking-[-0.06em] text-white">{item.company}</h3>
+                    <p className="mt-3 text-base font-medium text-white/75 sm:mt-5 sm:text-2xl">{item.role}</p>
+                    <p className="mt-2 text-[9px] tracking-[0.14em] text-white/40 sm:mt-3 sm:text-[11px] sm:tracking-[0.18em]">{item.type}</p>
+                    <p className="mt-3 max-w-xl text-xs leading-relaxed text-white/45 sm:mt-5 sm:text-sm">{item.description}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div className="mx-auto mt-6 flex w-full max-w-7xl items-center justify-between px-5 sm:mt-8 sm:px-8 lg:px-12">
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={previous} disabled={activeIndex === 0} aria-label="Previous experience" className="portfolio-icon-button rounded-full border border-white/15 text-white/75 transition hover:border-violet-300/60 disabled:cursor-not-allowed disabled:opacity-25"><ArrowLeft size={15}/></button>
-            <button type="button" onClick={next} disabled={activeIndex === experience.length - 1} aria-label="Next experience" className="portfolio-icon-button rounded-full border border-white/15 text-white/75 transition hover:border-violet-300/60 disabled:cursor-not-allowed disabled:opacity-25"><ArrowRight size={15}/></button>
-            <span className="ml-2 text-[9px] tracking-[0.2em] text-white/35 sm:text-[10px]">DRAG / SWIPE</span>
-          </div>
-          <div className="flex items-center gap-2" aria-label={`Experience ${activeIndex + 1} of 3`}>
-            {experience.map((item, index) => (
-              <button key={item.period} type="button" onClick={() => { setPaused(true); goTo(index); }} aria-label={`Go to ${item.company}`} aria-current={activeIndex === index ? 'step' : undefined} className={`h-1 rounded-full transition-all duration-500 ${activeIndex === index ? 'w-8 bg-violet-300' : 'w-3 bg-white/20 hover:bg-white/45'}`} />
-            ))}
-            <span className="ml-1 min-w-8 text-right text-[9px] tabular-nums text-white/35">{String(activeIndex + 1).padStart(2, '0')} / 03</span>
+          <div className="mx-auto mt-7 flex w-full max-w-7xl items-center justify-between px-5 sm:mt-9 sm:px-8 lg:px-12">
+            <span className="text-[9px] tracking-[0.2em] text-white/35 sm:text-[10px]">SCROLL TO EXPLORE</span>
+            <div className="flex items-center gap-2" aria-label={`Experience ${activeIndex + 1} of 3`}>
+              {experience.map((item, index) => (
+                <span key={item.period} aria-label={item.company} className={`h-1 rounded-full transition-all duration-500 ${activeIndex === index ? 'w-8 bg-violet-300' : 'w-3 bg-white/20'}`} />
+              ))}
+              <span className="ml-1 min-w-8 text-right text-[9px] tabular-nums text-white/35">{String(activeIndex + 1).padStart(2, '0')} / 03</span>
+            </div>
           </div>
         </div>
-        <p className="mt-4 text-center text-[9px] tracking-[0.13em] text-white/25 sm:mt-5 sm:text-[10px]">AUTO-PLAY · HOLD OR HOVER TO PAUSE · DRAG TO NAVIGATE</p>
       </section>
 
-      <section id="about" aria-label="About Yuvraj Singh" className="about-overlay relative z-30">
+      <section id="about" aria-label="About Yuvraj Singh" className="about-overlay relative z-50 -mt-[100vh]">
         <div className="relative overflow-hidden border-t border-white/[0.06] bg-[#080a14] px-5 py-16 sm:px-8 sm:py-24 lg:px-12 lg:py-32">
           <div className="pointer-events-none absolute -right-40 top-10 h-[420px] w-[420px] rounded-full bg-violet-500/[0.08] blur-[110px]" />
           <div className="relative mx-auto grid max-w-7xl gap-9 sm:gap-12 lg:grid-cols-[1.15fr_0.85fr] lg:gap-20">
