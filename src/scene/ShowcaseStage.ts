@@ -164,10 +164,8 @@ export class ShowcaseStage {
     this.applyLightingPreset('obsidian');
     this.handleResize();
 
-    if (!this.isSoftwareGl) {
-      this.renderer.compile(this.scene, this.camera);
-    }
-
+    // Let the first animation frame compile shaders lazily. Eager compilation can
+    // stall or fail on mobile GPUs before the hero has rendered a single frame.
     this.lastTimeMs = performance.now();
     this.tick();
   }
@@ -180,7 +178,7 @@ export class ShowcaseStage {
     this.renderer = new THREE.WebGLRenderer({
       alpha: true,
       antialias: false,
-      powerPreference: 'high-performance',
+      powerPreference: width < 768 ? 'low-power' : 'high-performance',
       preserveDrawingBuffer: false,
     });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -520,9 +518,6 @@ export class ShowcaseStage {
         this.propEntries.push(prop);
       }
 
-      if (!this.isSoftwareGl) {
-        this.renderer.compile(this.scene, this.camera);
-      }
     } catch (err) {
       console.warn('GLB showcase load fallback:', err);
       if (!this.disposed && this.icons.length === 0) {
