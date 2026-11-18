@@ -227,3 +227,23 @@ section[id], div[id="work"] { scroll-margin-top: 5.5rem; }
 @media (prefers-reduced-motion: reduce) {
   .experience-track { transition-duration: 0ms !important; }
 }
+
+
+/* Pinned, layered scroll chapters: video -> work -> experience -> about */
+.work-exhibition > div { width: 100%; }
+.work-gallery-track { user-select: none; overscroll-behavior-x: contain; }
+.experience-pin { position: relative; }
+.experience-stage { min-height: 100svh; }
+.experience-track { width: 300%; }
+.about-overlay { position: relative; z-index: 50; }
+@media (max-width: 640px) {
+  .work-exhibition { padding-block: 1.5rem; }
+  .work-exhibition > div > div:first-child { padding-inline: 1.25rem; }
+  .work-gallery-track { padding-inline: 1.25rem; padding-top: .5rem; padding-bottom: .75rem; }
+  .work-gallery-track > button { width: 7.25rem; min-width: 7.25rem; }
+  .work-gallery-track > button:hover { width: 12rem; min-width: 12rem; }
+  .work-gallery-track > button:nth-child(even) { margin-top: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .experience-track { transition-duration: 0ms !important; }
+}
