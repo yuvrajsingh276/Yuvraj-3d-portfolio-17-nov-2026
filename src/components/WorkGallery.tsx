@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { ArrowLeft, ArrowRight, ArrowUpRight, X } from 'lucide-react';
+import { ArrowUpRight, X } from 'lucide-react';
 
 type Project = {
   id: string;
@@ -51,6 +51,41 @@ const projects: Project[] = [
     description: 'A study in atmosphere, sculptural form and cinematic lighting.',
     accent: '#64e39b', mood: 'green',
   },
+  {
+    id: '06', title: 'Neon Form Studies', category: 'CONCEPT / 3D STUDY',
+    coverImage: 'cover-06', heroImage: 'hero-06',
+    galleryImages: ['frame-06-a', 'frame-06-b', 'frame-06-c'],
+    description: 'A concept-led exploration of luminous forms, colour and premium product-style lighting.',
+    accent: '#b49aff', mood: 'purple',
+  },
+  {
+    id: '07', title: 'Motion in Nature', category: 'CONCEPT / MOTION STUDY',
+    coverImage: 'cover-07', heroImage: 'hero-07',
+    galleryImages: ['frame-07-a', 'frame-07-b', 'frame-07-c'],
+    description: 'A visual study imagining organic movement translated into a bold motion language.',
+    accent: '#64e1d1', mood: 'teal',
+  },
+  {
+    id: '08', title: 'The Future Interface', category: 'CONCEPT / UI MOTION',
+    coverImage: 'cover-08', heroImage: 'hero-08',
+    galleryImages: ['frame-08-a', 'frame-08-b', 'frame-08-c'],
+    description: 'A speculative interface concept combining dimensional graphics and kinetic typography.',
+    accent: '#65baff', mood: 'blue',
+  },
+  {
+    id: '09', title: 'Objects of Desire', category: 'CONCEPT / PRODUCT CGI',
+    coverImage: 'cover-09', heroImage: 'hero-09',
+    galleryImages: ['frame-09-a', 'frame-09-b', 'frame-09-c'],
+    description: 'A mock product campaign focused on material finish, controlled reflections and visual impact.',
+    accent: '#ff9acb', mood: 'pink',
+  },
+  {
+    id: '10', title: 'Beyond the Ordinary', category: 'CONCEPT / BRAND FILM',
+    coverImage: 'cover-10', heroImage: 'hero-10',
+    galleryImages: ['frame-10-a', 'frame-10-b', 'frame-10-c'],
+    description: 'A fictional brand-film direction created to explore cinematic composition and storytelling.',
+    accent: '#ffad57', mood: 'orange',
+  },
 ];
 
 const palettes: Record<string, string> = {
@@ -81,12 +116,6 @@ export function WorkGallery() {
   const drag = useRef({ active: false, moved: false, startX: 0, scrollLeft: 0, pointerId: -1 });
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [dragging, setDragging] = useState(false);
-
-  const moveTrack = (direction: -1 | 1) => {
-    const track = trackRef.current;
-    if (!track) return;
-    track.scrollBy({ left: direction * Math.min(track.clientWidth * 0.72, 560), behavior: reduceMotion ? 'auto' : 'smooth' });
-  };
 
   const openProject = useCallback((project: Project) => {
     previousPageScroll.current = window.scrollY;
@@ -162,10 +191,7 @@ export function WorkGallery() {
             <h2 className="portfolio-heading-section font-semibold leading-none tracking-[-.055em] text-white">A few things I’ve made<span className="text-violet-300">.</span></h2>
             <p className="mt-3 text-xs tracking-wide text-white/40 sm:text-sm">An ongoing collection of motion, image and digital craft.</p>
           </div>
-          <div className="hidden items-center gap-2 sm:flex">
-            <button type="button" onClick={() => moveTrack(-1)} aria-label="Scroll projects left" className="portfolio-icon-button rounded-full border border-white/15 text-white/70 transition hover:border-white/40 hover:bg-white/10 hover:text-white"><ArrowLeft size={17} /></button>
-            <button type="button" onClick={() => moveTrack(1)} aria-label="Scroll projects right" className="portfolio-icon-button rounded-full border border-white/15 text-white/70 transition hover:border-white/40 hover:bg-white/10 hover:text-white"><ArrowRight size={17} /></button>
-          </div>
+
         </div>
 
         <div
@@ -203,7 +229,7 @@ export function WorkGallery() {
           ))}
         </div>
         <div className="flex items-center justify-between px-6 text-[9px] uppercase tracking-[.24em] text-white/30 sm:px-10 lg:px-16">
-          <span>Drag to explore</span><span>01 — 05</span>
+          <span>Drag to explore</span><span>01 — 10</span>
         </div>
       </div>
 
