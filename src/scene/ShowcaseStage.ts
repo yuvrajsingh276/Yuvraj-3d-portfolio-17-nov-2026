@@ -194,10 +194,16 @@ export class ShowcaseStage {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.renderer.domElement.style.display = 'block';
+    this.renderer.domElement.style.position = 'absolute';
+    this.renderer.domElement.style.inset = '0';
     this.renderer.domElement.style.width = '100%';
     this.renderer.domElement.style.height = '100%';
+    this.renderer.domElement.style.zIndex = '0';
     this.renderer.domElement.style.cursor = 'grab';
     this.renderer.domElement.setAttribute('aria-label', 'Interactive 3D Creative Software Showcase');
+    this.container.style.position = 'absolute';
+    this.container.style.inset = '0';
+    this.container.style.overflow = 'hidden';
     this.container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
