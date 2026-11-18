@@ -91,12 +91,12 @@ export default function App() {
         <div
           ref={canvasMountRef}
           data-testid="showcase-canvas-mount"
-          className="absolute inset-0 z-[1] h-full w-full"
+          className="absolute inset-0 z-[2] h-full w-full"
         />
 
         <div
           aria-hidden="true"
-          className="pointer-events-none fixed inset-0 z-[1]"
+          className="pointer-events-none fixed inset-0 z-[3]"
           style={{
             background: 'radial-gradient(560px circle at var(--pointer-x, 50%) var(--pointer-y, 50%), rgba(105, 116, 190, 0.10), transparent 62%)',
             mixBlendMode: 'screen',
