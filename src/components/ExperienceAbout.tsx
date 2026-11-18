@@ -18,7 +18,8 @@ export function ExperienceAbout() {
       frame = requestAnimationFrame(() => {
         const stage = stageRef.current;
         if (!stage) return;
-        const scrollable = Math.max(1, stage.offsetHeight - window.innerHeight);
+        const stickyStage = stage.querySelector<HTMLElement>(".experience-stage");
+        const scrollable = Math.max(1, stage.offsetHeight - (stickyStage?.offsetHeight ?? window.innerHeight));
         const progress = Math.max(0, Math.min(0.9999, -stage.getBoundingClientRect().top / scrollable));
         const nextIndex = Math.min(experience.length - 1, Math.floor(progress * experience.length));
         setActiveIndex(current => current === nextIndex ? current : nextIndex);
@@ -36,8 +37,8 @@ export function ExperienceAbout() {
 
   return (
     <div className="experience-about-stack relative z-40 -mt-[100vh]">
-      <section ref={stageRef} id="experience" aria-label="Professional experience" className="experience-pin relative h-[300vh] w-full">
-        <div className="experience-stage sticky top-0 z-20 flex h-screen w-full flex-col justify-center overflow-hidden border-t border-white/[0.06] bg-[#050711] py-10 sm:py-14">
+      <section ref={stageRef} id="experience" aria-label="Professional experience" className="experience-pin relative h-[300svh] w-full">
+        <div className="experience-stage sticky top-0 z-20 flex h-[100svh] w-full flex-col justify-center overflow-hidden border-t border-white/[0.06] bg-[#050711] py-10 sm:py-14">
           <div className="mx-auto mb-7 w-full max-w-7xl px-5 sm:mb-10 sm:px-8 lg:px-12">
             <p className="mb-3 text-[9px] font-semibold tracking-[0.28em] text-violet-300/75 sm:text-[10px]">03 / CAREER JOURNEY</p>
             <div>
@@ -79,7 +80,7 @@ export function ExperienceAbout() {
         </div>
       </section>
 
-      <section id="about" aria-label="About Yuvraj Singh" className="about-overlay relative z-50 -mt-[100vh]">
+      <section id="about" aria-label="About Yuvraj Singh" className="about-overlay relative z-50 -mt-[100svh]">
         <div className="relative overflow-hidden border-t border-white/[0.06] bg-[#080a14] px-5 py-16 sm:px-8 sm:py-24 lg:px-12 lg:py-32">
           <div className="pointer-events-none absolute -right-40 top-10 h-[420px] w-[420px] rounded-full bg-violet-500/[0.08] blur-[110px]" />
           <div className="relative mx-auto grid max-w-7xl gap-9 sm:gap-12 lg:grid-cols-[1.15fr_0.85fr] lg:gap-20">
