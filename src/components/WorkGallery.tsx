@@ -183,8 +183,8 @@ export function WorkGallery() {
   };
 
   return (
-    <section className="work-exhibition relative w-full overflow-hidden bg-[#03050b] py-20 sm:py-28" aria-label="Selected projects">
-      <div className="mx-auto max-w-[1600px]">
+    <section className="work-exhibition relative flex h-full w-full items-center overflow-hidden bg-[#03050b] py-10 sm:py-14" aria-label="Selected projects">
+      <div className="mx-auto w-full max-w-[1600px]">
         <div className="mb-9 flex items-end justify-between gap-5 px-6 sm:px-10 lg:px-16">
           <div>
             <p className="mb-3 text-[10px] font-medium uppercase tracking-[.32em] text-violet-300/75">02 / Selected projects</p>
