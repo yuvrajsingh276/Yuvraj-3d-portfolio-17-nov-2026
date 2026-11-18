@@ -6,6 +6,8 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
+    // GitHub Pages serves this project from a repository subpath; keep Vercel/root hosting unchanged.
+    base: process.env.GITHUB_ACTIONS === 'true' ? '/Yuvraj-3d-portfolio-17-nov-2026/' : '/',
     plugins: [
       react(),
       tailwindcss(),
