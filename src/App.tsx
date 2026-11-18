@@ -200,11 +200,8 @@ export default function App() {
       </nav>
 
       {/* Video section slides over the pinned hero as the visitor scrolls */}
-      <section
-        id="intro-video"
-        aria-label="Video introduction"
-        className="relative isolate z-20 mt-[100vh] flex min-h-[78svh] w-full items-center justify-center border-t border-white/[0.06] bg-[#070912] px-5 py-12 sm:min-h-screen sm:px-6 sm:py-20"
-      >
+      <section id="intro-video" aria-label="Video introduction" className="relative z-20 mt-[100vh] h-[200vh]">
+        <div className="sticky top-0 flex h-screen w-full items-center justify-center overflow-hidden border-t border-white/[0.06] bg-[#070912] px-5 py-12 sm:px-6 sm:py-20">
         <div className="mx-auto w-full max-w-6xl">
           <div className="absolute inset-0 overflow-hidden bg-[radial-gradient(ellipse_at_50%_42%,rgba(111,76,190,0.20),transparent_55%),linear-gradient(135deg,#111525,#080a12_65%,#160d19)]">
             <div className="absolute inset-0 opacity-25" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
@@ -216,14 +213,17 @@ export default function App() {
             <span className="mt-4 text-[10px] uppercase tracking-[0.28em] text-white/35">Full-screen video placeholder</span>
           </div>
         </div>
+        </div>
       </section>
 
-      {/* Cinematic horizontal project exhibition; all other portfolio sections remain unchanged */}
-      <div id="work" className="relative z-20 border-t border-white/[0.06]">
-        <WorkGallery />
+      {/* Work pins over the video and stays in view while the visitor explores projects */}
+      <div id="work" className="relative z-30 -mt-[100vh] h-[200vh]">
+        <div className="sticky top-0 flex h-screen items-center overflow-hidden border-t border-white/[0.06] bg-[#03050b]">
+          <WorkGallery />
+        </div>
       </div>
 
-      {/* Experience marquee and personal profile sections follow the work gallery */}
+      {/* Experience pins over the work gallery; About rises over the final company */}
       <ExperienceAbout />
       </div>
     </MotionConfig>
