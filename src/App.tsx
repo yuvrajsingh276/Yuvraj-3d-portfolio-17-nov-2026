@@ -203,7 +203,7 @@ export default function App() {
       <section
         id="intro-video"
         aria-label="Video introduction"
-        className="relative isolate z-20 flex min-h-[78svh] w-full items-center justify-center border-t border-white/[0.06] bg-[#070912] px-5 py-12 sm:min-h-screen sm:px-6 sm:py-20"
+        className="relative isolate z-20 mt-[100vh] flex min-h-[78svh] w-full items-center justify-center border-t border-white/[0.06] bg-[#070912] px-5 py-12 sm:min-h-screen sm:px-6 sm:py-20"
       >
         <div className="mx-auto w-full max-w-6xl">
           <div className="absolute inset-0 overflow-hidden bg-[radial-gradient(ellipse_at_50%_42%,rgba(111,76,190,0.20),transparent_55%),linear-gradient(135deg,#111525,#080a12_65%,#160d19)]">
