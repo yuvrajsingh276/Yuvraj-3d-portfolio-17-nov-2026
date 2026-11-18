@@ -24,6 +24,8 @@ import {
   computeDofConfig,
   DECORATIVE_PROP_NODES,
   computeDecorativePropsLayout,
+  sampleOrbitPoint,
+  computeParticleHoverDisplacement,
 } from './showcaseLogic';
 
 test('catalog contains all required core creative and AI tools with unique IDs and GLB node names', () => {
@@ -66,11 +68,59 @@ test('orbital layout maintains safe non-overlapping 3D separation across every s
   }
 });
 
-test('orbital layout uses varied Z depths across foreground, midground, and background', () => {
-  const slots = computeOrbitalLayout(TOOLS_CATALOG, 1.6);
-  const zValues = slots.map((s) => s.position[2]);
-  const zSpread = Math.max(...zValues) - Math.min(...zValues);
-  assert.ok(zSpread >= 8.0, `Expected wide Z-axis depth spread >= 8.0, got ${zSpread.toFixed(2)}`);
+test('orbital layout places every icon strictly on the tilted orbit curve with equal arc-length spacing', () => {
+  for (const aspect of [1.6, 0.46]) {
+    const slots = computeOrbitalLayout(TOOLS_CATALOG, aspect, 0);
+    const arcSegs: number[] = [];
+    const chords: number[] = [];
+    for (let i = 0; i < slots.length; i++) {
+      const a = slots[i].position;
+      const b = slots[(i + 1) % slots.length].position;
+      chords.push(Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]));
+
+      const s0 = 0.25 - i / slots.length;
+      const s1 = 0.25 - (i + 1) / slots.length;
+      let segLen = 0;
+      let prev = sampleOrbitPoint(s0, aspect, 1);
+      for (let step = 1; step <= 40; step++) {
+        const cur = sampleOrbitPoint(s0 + ((s1 - s0) * step) / 40, aspect, 1);
+        segLen += Math.hypot(cur[0] - prev[0], cur[1] - prev[1], cur[2] - prev[2]);
+        prev = cur;
+      }
+      arcSegs.push(segLen);
+
+      const expected = sampleOrbitPoint(s0, aspect, 1);
+      const err = Math.hypot(a[0] - expected[0], a[1] - expected[1], a[2] - expected[2]);
+      assert.ok(err < 1e-6, `Expected slot ${slots[i].id} on orbit curve, err=${err}`);
+    }
+    const maxArc = Math.max(...arcSegs);
+    const minArc = Math.min(...arcSegs);
+    assert.ok(
+      maxArc - minArc < 0.02,
+      `Expected equal curve arc-length gaps at aspect=${aspect}, got min=${minArc.toFixed(4)} max=${maxArc.toFixed(4)}`
+    );
+    const maxChord = Math.max(...chords);
+    const minChord = Math.min(...chords);
+    assert.ok(
+      maxChord - minChord < 0.72,
+      `Expected balanced chord spacing at aspect=${aspect}, got min=${minChord.toFixed(3)} max=${maxChord.toFixed(3)}`
+    );
+    const zValues = slots.map((s) => s.position[2]);
+    const zSpread = Math.max(...zValues) - Math.min(...zValues);
+    assert.ok(zSpread >= 2.5, `Expected natural tilted orbit Z spread >= 2.5, got ${zSpread.toFixed(2)}`);
+  }
+});
+
+test('particle hover displacement pushes nearby particles outward and returns zero when inactive or distant', () => {
+  const idle = computeParticleHoverDisplacement([1, 0, 0], [1.2, 0, 0], 0);
+  assert.deepEqual(idle, [0, 0, 0]);
+
+  const far = computeParticleHoverDisplacement([8, 4, 0], [0, 0, 0], 1.0, 2.8);
+  assert.deepEqual(far, [0, 0, 0]);
+
+  const near = computeParticleHoverDisplacement([2.0, 0.4, 0], [1.2, 0.1, 0], 1.0, 2.8, 1.25);
+  const mag = Math.hypot(...near);
+  assert.ok(mag > 0.3 && mag <= 1.5, `Expected smooth outward hover displacement, got ${mag.toFixed(3)}`);
 });
 
 test('responsive camera distance pulls back smoothly on narrow mobile screens', () => {

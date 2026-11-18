@@ -24,6 +24,9 @@ import {
   computeDecorativePropsLayout,
   computeBloomConfig,
   computeDofConfig,
+  getOrbitParams,
+  sampleOrbitPoint,
+  computeParticleHoverDisplacement,
   type LightingPreset,
   type LightingPresetId,
   type ToolSpec,
@@ -54,6 +57,9 @@ export interface ShowcaseCallbacks {
 const _vec3A = new THREE.Vector3();
 const _vec3B = new THREE.Vector3();
 const _colorA = new THREE.Color();
+const _orbitPlane = new THREE.Plane(new THREE.Vector3(0, -Math.sin((22 * Math.PI) / 180), Math.cos((22 * Math.PI) / 180)), 0);
+const _pointerWorldOnOrbit = new THREE.Vector3();
+const _pointerLocalOnOrbit = new THREE.Vector3();
 
 export class ShowcaseStage {
   private container: HTMLElement;
@@ -89,6 +95,16 @@ export class ShowcaseStage {
   private dustPoints!: THREE.Points;
   private dustBasePositions!: Float32Array;
   private dustVelocities!: Float32Array;
+  private dustHoverOffsets!: Float32Array;
+  private orbitParticles!: THREE.Points;
+  private orbitParticleMeta: {
+    baseFraction: number;
+    speed: number;
+    radialOffset: [number, number, number];
+    phase: number;
+  }[] = [];
+  private orbitParticleHoverOffsets!: Float32Array;
+  private orbitGlowMaterials: THREE.ShaderMaterial[] = [];
   private flutedBg!: FlutedBackgroundController;
   private orbitGuideRing!: THREE.Group;
   private scatterStates = new Map<string, IconScatterState>();
@@ -158,6 +174,7 @@ export class ShowcaseStage {
     this.initLighting();
     this.initEnvironmentDecor();
     void this.initGlbAssets();
+    this.initOrbitParticles();
     this.initParticles();
     this.initControls();
     this.bindEvents();
@@ -181,10 +198,16 @@ export class ShowcaseStage {
       powerPreference: width < 768 ? 'low-power' : 'high-performance',
       preserveDrawingBuffer: false,
     });
+    const glCtx = this.renderer.getContext();
+    const debugExt = glCtx.getExtension('WEBGL_debug_renderer_info');
+    const gpuName = String(
+      glCtx.getParameter(debugExt ? debugExt.UNMASKED_RENDERER_WEBGL : glCtx.RENDERER) ?? ''
+    );
+    this.isSoftwareGl = /SwiftShader|llvmpipe|softpipe|Software|Basic Render/i.test(gpuName);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.84;
-    const pixelRatioCap = width < 640 ? 0.85 : width < 1024 ? 1 : 1.25;
+    const pixelRatioCap = this.isSoftwareGl ? 1 : width < 640 ? 0.85 : width < 1024 ? 1 : 1.25;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioCap));
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.setSize(width, height);
@@ -254,6 +277,7 @@ export class ShowcaseStage {
     const excluded: THREE.Object3D[] = [];
     if (this.flutedBg?.mesh) excluded.push(this.flutedBg.mesh);
     if (this.dustPoints) excluded.push(this.dustPoints);
+    if (this.orbitParticles) excluded.push(this.orbitParticles);
     if (this.scatterBurstPoints) excluded.push(this.scatterBurstPoints);
     if (this.orbitGuideRing) excluded.push(this.orbitGuideRing);
     for (let i = 0; i < this.hitProxies.length; i++) {
@@ -333,10 +357,11 @@ export class ShowcaseStage {
     this.rebuildOrbitalGuideRing(aspect, this.magneticRotation.angleDeg);
   }
 
-  /** Fixed 20-degree tilted oval; icons orbit around this stationary guide. */
-  private rebuildOrbitalGuideRing(_aspect: number, _angleOffsetDeg: number) {
+  /** Fixed tilted oval using the exact arc-length curve shared by icons and orbit particles. */
+  private rebuildOrbitalGuideRing(aspect: number, _angleOffsetDeg: number) {
     if (!this.orbitGuideRing) return;
 
+    this.orbitGlowMaterials = [];
     for (const child of [...this.orbitGuideRing.children]) {
       this.orbitGuideRing.remove(child);
       const mesh = child as THREE.Mesh;
@@ -346,32 +371,23 @@ export class ShowcaseStage {
       else material?.dispose();
     }
 
-    const isPortrait = this.currentAspect < 0.85;
-    const radiusX = isPortrait ? 5.0 : 9.35;
-    const radiusY = isPortrait ? 5.45 : 4.08;
-    const tilt = (20 * Math.PI) / 180;
-    const pointOnOrbit = (angle: number, scale = 1) => {
-      const orbitY = Math.sin(angle) * radiusY * scale;
-      return new THREE.Vector3(
-        Math.cos(angle) * radiusX * scale,
-        orbitY * Math.cos(tilt),
-        orbitY * Math.sin(tilt)
-      );
+    const pointOnOrbit = (arcFraction: number, scale = 1) => {
+      const [x, y, z] = sampleOrbitPoint(arcFraction, aspect, scale);
+      return new THREE.Vector3(x, y, z);
     };
-    const points = Array.from({ length: 256 }, (_, i) =>
-      pointOnOrbit((i / 256) * Math.PI * 2)
-    );
+    const points = Array.from({ length: 256 }, (_, i) => pointOnOrbit(i / 256));
     const curve = new THREE.CatmullRomCurve3(points, true, 'centripetal', 0.35);
 
     const makeGradientTube = (
       path: THREE.Curve<THREE.Vector3>,
       radius: number,
       tubularSegments: number,
-      closed: boolean
+      closed: boolean,
+      radialSegments = 12
     ) => {
-      const geometry = new THREE.TubeGeometry(path, tubularSegments, radius, 4, closed);
+      const geometry = new THREE.TubeGeometry(path, tubularSegments, radius, radialSegments, closed);
       const colors = new Float32Array(geometry.getAttribute('position').count * 3);
-      const verticesPerRing = 5;
+      const verticesPerRing = radialSegments + 1;
       for (let i = 0; i < colors.length / 3; i++) {
         const t = Math.floor(i / verticesPerRing) / tubularSegments;
         const [r, g, b] = sampleYellowRedOrangeBlueGradient(t);
@@ -383,55 +399,105 @@ export class ShowcaseStage {
       return geometry;
     };
 
-    // Main orbital path stays fixed; opaque icons cover it through depth testing.
-    const aura = new THREE.Mesh(
-      makeGradientTube(curve, 0.010, 768, true),
-      new THREE.MeshBasicMaterial({
-        vertexColors: true,
+    const createOrbitGlowShader = (baseOpacity: number, pulseGain: number, edgePower: number) => {
+      const mat = new THREE.ShaderMaterial({
+        uniforms: {
+          uTime: { value: 0 },
+          uBaseOpacity: { value: baseOpacity },
+          uPulseGain: { value: pulseGain },
+          uEdgePower: { value: edgePower },
+          uPointerPos: { value: new THREE.Vector3() },
+          uPointerActive: { value: 0 },
+        },
+        vertexShader: `
+          attribute vec3 color;
+          varying vec3 vColor;
+          varying vec2 vUv;
+          varying vec3 vLocalPos;
+          varying vec3 vNormalView;
+          varying vec3 vViewPos;
+          void main() {
+            vColor = color;
+            vUv = uv;
+            vLocalPos = position;
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            vNormalView = normalize(normalMatrix * normal);
+            vViewPos = -mvPosition.xyz;
+            gl_Position = projectionMatrix * mvPosition;
+          }
+        `,
+        fragmentShader: `
+          uniform float uTime;
+          uniform float uBaseOpacity;
+          uniform float uPulseGain;
+          uniform float uEdgePower;
+          uniform vec3 uPointerPos;
+          uniform float uPointerActive;
+          varying vec3 vColor;
+          varying vec2 vUv;
+          varying vec3 vLocalPos;
+          varying vec3 vNormalView;
+          varying vec3 vViewPos;
+          void main() {
+            float wave1 = 0.5 + 0.5 * sin(vUv.x * 6.2831853 * 2.0 - uTime * 0.95);
+            float wave2 = 0.5 + 0.5 * sin(vUv.x * 6.2831853 * 4.0 + uTime * 0.65);
+            float shimmer = smoothstep(0.15, 0.95, wave1) * 0.65 + smoothstep(0.2, 0.95, wave2) * 0.35;
+
+            float dPtr = distance(vLocalPos, uPointerPos);
+            float hoverGlow = smoothstep(3.8, 0.0, dPtr) * uPointerActive;
+
+            // Smooth Gaussian-like radial feathering across the tube silhouette
+            float facing = clamp(abs(dot(normalize(vNormalView), normalize(vViewPos))), 0.0, 1.0);
+            float radialFeather = pow(facing, uEdgePower);
+
+            vec3 luminous = mix(vColor, vec3(0.79, 0.72, 1.0), 0.38 + hoverGlow * 0.48);
+            luminous *= (0.98 + shimmer * uPulseGain + hoverGlow * 1.05);
+            float alpha = clamp(uBaseOpacity * radialFeather * (0.9 + shimmer * 0.4 + hoverGlow * 0.75), 0.0, 1.0);
+            gl_FragColor = vec4(luminous, alpha);
+          }
+        `,
         transparent: true,
-        opacity: 0.3,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         depthTest: true,
-      })
+      });
+      this.orbitGlowMaterials.push(mat);
+      return mat;
+    };
+
+    // Thin, crisp orbital core with richer multi-layer silky feathered glow
+    const outerAura = new THREE.Mesh(
+      makeGradientTube(curve, 0.135, 512, true, 12),
+      createOrbitGlowShader(0.26, 0.55, 2.8)
+    );
+    const midGlow = new THREE.Mesh(
+      makeGradientTube(curve, 0.036, 640, true, 12),
+      createOrbitGlowShader(0.54, 0.75, 1.95)
     );
     const core = new THREE.Mesh(
-      makeGradientTube(curve, 0.0022, 768, true),
-      new THREE.MeshBasicMaterial({
-        vertexColors: true,
-        transparent: true,
-        opacity: 0.36,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        depthTest: true,
-      })
+      makeGradientTube(curve, 0.0062, 768, true, 10),
+      createOrbitGlowShader(1.0, 0.95, 1.1)
     );
-    aura.renderOrder = -20;
-    core.renderOrder = -19;
-    this.orbitGuideRing.add(aura, core);
+    outerAura.renderOrder = -22;
+    midGlow.renderOrder = -21;
+    core.renderOrder = -20;
+    this.orbitGuideRing.add(outerAura, midGlow, core);
 
-    // Fine broken accents follow the same tilted ellipse without forming full rings.
+    // Fine harmonic accent filaments around the glowing main orbit
     const accentArcs = [
-      { start: 0.035, end: 0.285, scale: 1.022, radius: 0.0021, opacity: 0.34 },
-      { start: 0.365, end: 0.595, scale: 0.978, radius: 0.0019, opacity: 0.3 },
-      { start: 0.695, end: 0.935, scale: 1.038, radius: 0.002, opacity: 0.32 },
+      { start: 0.035, end: 0.285, scale: 1.028, radius: 0.0022, opacity: 0.24 },
+      { start: 0.365, end: 0.595, scale: 0.972, radius: 0.002, opacity: 0.22 },
+      { start: 0.695, end: 0.935, scale: 1.042, radius: 0.0022, opacity: 0.23 },
     ];
     accentArcs.forEach((arc, index) => {
       const arcPoints = Array.from({ length: 52 }, (_, i) => {
         const t = arc.start + (arc.end - arc.start) * (i / 51);
-        return pointOnOrbit(t * Math.PI * 2, arc.scale);
+        return pointOnOrbit(t, arc.scale);
       });
       const arcCurve = new THREE.CatmullRomCurve3(arcPoints, false, 'centripetal', 0.35);
       const line = new THREE.Mesh(
-        makeGradientTube(arcCurve, arc.radius, 96, false),
-        new THREE.MeshBasicMaterial({
-          vertexColors: true,
-          transparent: true,
-          opacity: arc.opacity,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-          depthTest: true,
-        })
+        makeGradientTube(arcCurve, arc.radius, 96, false, 8),
+        createOrbitGlowShader(arc.opacity, 0.35, 1.4)
       );
       line.renderOrder = -18 + index;
       this.orbitGuideRing?.add(line);
@@ -572,6 +638,68 @@ export class ShowcaseStage {
     this.iconHalos.set(entry.spec.id, sprite);
   }
 
+  private initOrbitParticles() {
+    const count = 460;
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    this.orbitParticleHoverOffsets = new Float32Array(count * 3);
+    this.orbitParticleMeta = [];
+
+    let seed = 8821;
+    const rand = () => {
+      seed = (seed * 16807) % 2147483647;
+      return (seed - 1) / 2147483646;
+    };
+
+    const aspect =
+      Math.max(1, this.container.clientWidth) / Math.max(1, this.container.clientHeight);
+
+    for (let i = 0; i < count; i++) {
+      const baseFraction = i / count + (rand() - 0.5) * 0.004;
+      const speed = 0.011 + rand() * 0.018;
+      // Blend tight core-hugging sparks with a gentle halo band around the orbit
+      const bandSpread = i % 3 === 0 ? 0.52 : 0.24;
+      const radialOffset: [number, number, number] = [
+        (rand() - 0.5) * bandSpread,
+        (rand() - 0.5) * bandSpread * 0.72,
+        (rand() - 0.5) * bandSpread * 0.72,
+      ];
+      const phase = rand() * Math.PI * 2;
+      this.orbitParticleMeta.push({ baseFraction, speed, radialOffset, phase });
+
+      const [ox, oy, oz] = sampleOrbitPoint(baseFraction, aspect, 1);
+      positions[i * 3] = ox + radialOffset[0];
+      positions[i * 3 + 1] = oy + radialOffset[1];
+      positions[i * 3 + 2] = oz + radialOffset[2];
+
+      const [cr, cg, cb] = sampleYellowRedOrangeBlueGradient(baseFraction);
+      // Enrich with bright violet-white luminescence for glowing orbit stardust
+      colors[i * 3] = Math.min(1, cr * 0.7 + 0.36);
+      colors[i * 3 + 1] = Math.min(1, cg * 0.66 + 0.32);
+      colors[i * 3 + 2] = Math.min(1, cb * 0.76 + 0.42);
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const mat = new THREE.PointsMaterial({
+      size: 0.27,
+      map: this.textures.glowSprite,
+      transparent: true,
+      opacity: 0.94,
+      vertexColors: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true,
+    });
+
+    this.orbitParticles = new THREE.Points(geo, mat);
+    this.orbitParticles.frustumCulled = false;
+    this.orbitParticles.renderOrder = -15;
+    this.constellationGroup.add(this.orbitParticles);
+  }
+
   private initParticles() {
     const count = 360;
     const positions = new Float32Array(count * 3);
@@ -609,24 +737,26 @@ export class ShowcaseStage {
     }
 
     this.dustBasePositions = new Float32Array(positions);
+    this.dustHoverOffsets = new Float32Array(count * 3);
     this.dustVelocities = new Float32Array(count);
-    for (let i = 0; i < count; i++) this.dustVelocities[i] = 1.8 + rand() * 1.8;
+    for (let i = 0; i < count; i++) this.dustVelocities[i] = 1.4 + rand() * 1.5;
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
     const mat = new THREE.PointsMaterial({
-      size: 0.095,
+      size: 0.11,
       map: this.textures.particleSprite,
       transparent: true,
-      opacity: 0.36,
+      opacity: 0.44,
       vertexColors: true,
-      blending: THREE.NormalBlending,
+      blending: THREE.AdditiveBlending,
       depthWrite: false,
       sizeAttenuation: true,
     });
 
     this.dustPoints = new THREE.Points(geo, mat);
+    this.dustPoints.frustumCulled = false;
     this.scene.add(this.dustPoints);
   }
 
@@ -645,6 +775,7 @@ export class ShowcaseStage {
   private bindEvents() {
     window.addEventListener('resize', this.handleResize);
     window.addEventListener('scroll', this.handleScrollVisibility, { passive: true });
+    window.addEventListener('pointermove', this.handleWindowPointerMove, { passive: true });
     document.addEventListener('visibilitychange', this.handlePageVisibility);
     const canvas = this.renderer.domElement;
     canvas.addEventListener('pointermove', this.handlePointerMove);
@@ -658,6 +789,7 @@ export class ShowcaseStage {
   private unbindEvents() {
     window.removeEventListener('resize', this.handleResize);
     window.removeEventListener('scroll', this.handleScrollVisibility);
+    window.removeEventListener('pointermove', this.handleWindowPointerMove);
     document.removeEventListener('visibilitychange', this.handlePageVisibility);
     const canvas = this.renderer.domElement;
     canvas.removeEventListener('pointermove', this.handlePointerMove);
@@ -668,8 +800,13 @@ export class ShowcaseStage {
     canvas.removeEventListener('webglcontextrestored', this.handleContextRestored);
   }
 
+  private handleWindowPointerMove = (e: PointerEvent) => {
+    if (!this.heroVisible || this.isDraggingScene) return;
+    this.updatePointerCoords(e);
+  };
+
   private handleScrollVisibility = () => {
-    const visible = window.scrollY < window.innerHeight * 0.9;
+    const visible = window.scrollY < window.innerHeight * 1.05;
     if (visible === this.heroVisible) return;
     this.heroVisible = visible;
     if (visible && this.pageVisible && !this.contextLost && !this.disposed) {
@@ -677,6 +814,7 @@ export class ShowcaseStage {
       this.tick();
     } else {
       cancelAnimationFrame(this.frameId);
+      clearTimeout(this.frameId);
     }
   };
 
@@ -687,6 +825,7 @@ export class ShowcaseStage {
       this.tick();
     } else {
       cancelAnimationFrame(this.frameId);
+      clearTimeout(this.frameId);
     }
   };
 
@@ -759,6 +898,13 @@ export class ShowcaseStage {
     this.controls.target.set(0, 0.15, 0);
     this.controls.update();
     this.applyDofState();
+    if (this.elapsedSec > 0 && this.heroVisible && !this.disposed && !this.contextLost) {
+      if (this.composer && !this.isSoftwareGl) {
+        this.composer.render();
+      } else {
+        this.renderer.render(this.scene, this.camera);
+      }
+    }
   };
 
   private updatePointerCoords(e: PointerEvent) {
@@ -1051,23 +1197,117 @@ export class ShowcaseStage {
 
   private updateScene(dt: number) {
     const t = this.elapsedSec;
-    // Move particles through actual world-space Z depth toward the camera.
-    if (!this.reducedMotion && this.dustPoints) {
+    const orbitParams = getOrbitParams(this.currentAspect);
+    _orbitPlane.normal.set(0, -Math.sin(orbitParams.tiltRad), Math.cos(orbitParams.tiltRad)).normalize();
+
+    // Project cursor ray onto the tilted 3D orbit plane for responsive particle displacement
+    let hasPointerWorld = false;
+    if (this.pointerActive > 0.02 && Math.abs(this.pointerNdc.x) <= 1.2 && Math.abs(this.pointerNdc.y) <= 1.2) {
+      this.raycaster.setFromCamera(this.pointerNdc, this.camera);
+      if (this.raycaster.ray.intersectPlane(_orbitPlane, _pointerWorldOnOrbit)) {
+        _pointerLocalOnOrbit.copy(_pointerWorldOnOrbit);
+        this.constellationGroup.worldToLocal(_pointerLocalOnOrbit);
+        hasPointerWorld = true;
+      }
+    }
+
+    // Update orbit glow shader uniforms
+    for (let i = 0; i < this.orbitGlowMaterials.length; i++) {
+      const u = this.orbitGlowMaterials[i].uniforms;
+      u.uTime.value = t;
+      u.uPointerActive.value = hasPointerWorld ? this.pointerActive : 0;
+      if (hasPointerWorld) {
+        (u.uPointerPos.value as THREE.Vector3).copy(_pointerLocalOnOrbit);
+      }
+    }
+
+    // Stream luminous particles along the orbit track and move them smoothly away on mouse hover
+    if (this.orbitParticles) {
+      const posAttr = this.orbitParticles.geometry.getAttribute('position') as THREE.BufferAttribute;
+      const positions = posAttr.array as Float32Array;
+      const ptrLocal: [number, number, number] = [
+        _pointerLocalOnOrbit.x,
+        _pointerLocalOnOrbit.y,
+        _pointerLocalOnOrbit.z,
+      ];
+
+      for (let i = 0; i < this.orbitParticleMeta.length; i++) {
+        const meta = this.orbitParticleMeta[i];
+        const frac = meta.baseFraction + (this.reducedMotion ? 0 : t * meta.speed);
+        const [bx, by, bz] = sampleOrbitPoint(frac, this.currentAspect, 1);
+        const wobble = this.reducedMotion ? 0 : Math.sin(t * 1.4 + meta.phase) * 0.055;
+        const baseX = bx + meta.radialOffset[0] + wobble;
+        const baseY = by + meta.radialOffset[1] + wobble * 0.7;
+        const baseZ = bz + meta.radialOffset[2];
+
+        const [tx, ty, tz] = hasPointerWorld
+          ? computeParticleHoverDisplacement(
+              [baseX, baseY, baseZ],
+              ptrLocal,
+              this.pointerActive,
+              3.15,
+              1.65
+            )
+          : ([0, 0, 0] as [number, number, number]);
+
+        const offset = i * 3;
+        const lambda = hasPointerWorld && (tx !== 0 || ty !== 0 || tz !== 0) ? 9.5 : 3.6;
+        this.orbitParticleHoverOffsets[offset] = dampValue(this.orbitParticleHoverOffsets[offset], tx, lambda, dt);
+        this.orbitParticleHoverOffsets[offset + 1] = dampValue(this.orbitParticleHoverOffsets[offset + 1], ty, lambda, dt);
+        this.orbitParticleHoverOffsets[offset + 2] = dampValue(this.orbitParticleHoverOffsets[offset + 2], tz, lambda, dt);
+
+        positions[offset] = baseX + this.orbitParticleHoverOffsets[offset];
+        positions[offset + 1] = baseY + this.orbitParticleHoverOffsets[offset + 1];
+        positions[offset + 2] = baseZ + this.orbitParticleHoverOffsets[offset + 2];
+      }
+      posAttr.needsUpdate = true;
+    }
+
+    // Move background stardust particles through world-space Z depth + displace on cursor hover
+    if (this.dustPoints) {
       const positionAttr = this.dustPoints.geometry.getAttribute('position') as THREE.BufferAttribute;
       const positions = positionAttr.array as Float32Array;
+      const ptrWorld: [number, number, number] = [
+        _pointerWorldOnOrbit.x,
+        _pointerWorldOnOrbit.y,
+        _pointerWorldOnOrbit.z,
+      ];
+
       for (let i = 0; i < this.dustVelocities.length; i++) {
         const offset = i * 3;
-        let z = positions[offset + 2] + this.dustVelocities[i] * dt;
-        if (z > 12) z = -20;
-        positions[offset + 2] = z;
+        let z = positions[offset + 2];
+        if (!this.reducedMotion && !this.motionPaused) {
+          z += this.dustVelocities[i] * dt;
+          if (z > 12) z = -20;
+        }
         const depthProgress = (z + 20) / 32;
         const perspectiveScale = 0.48 + depthProgress * 1.28;
-        positions[offset] = this.dustBasePositions[offset] * perspectiveScale;
-        positions[offset + 1] = this.dustBasePositions[offset + 1] * perspectiveScale;
+        const baseX = this.dustBasePositions[offset] * perspectiveScale;
+        const baseY =
+          this.dustBasePositions[offset + 1] * perspectiveScale +
+          (this.reducedMotion ? 0 : Math.sin(t * 0.4 + i * 0.17) * 0.14);
+
+        const [tx, ty, tz] = hasPointerWorld
+          ? computeParticleHoverDisplacement(
+              [baseX, baseY, ptrWorld[2]],
+              ptrWorld,
+              this.pointerActive,
+              3.4,
+              1.65
+            )
+          : ([0, 0, 0] as [number, number, number]);
+
+        const lambda = hasPointerWorld && (tx !== 0 || ty !== 0) ? 8.5 : 3.2;
+        this.dustHoverOffsets[offset] = dampValue(this.dustHoverOffsets[offset], tx, lambda, dt);
+        this.dustHoverOffsets[offset + 1] = dampValue(this.dustHoverOffsets[offset + 1], ty, lambda, dt);
+        this.dustHoverOffsets[offset + 2] = dampValue(this.dustHoverOffsets[offset + 2], tz, lambda, dt);
+
+        positions[offset] = baseX + this.dustHoverOffsets[offset];
+        positions[offset + 1] = baseY + this.dustHoverOffsets[offset + 1];
+        positions[offset + 2] = z + this.dustHoverOffsets[offset + 2];
       }
       positionAttr.needsUpdate = true;
     }
-    // Orbit guide intentionally remains stationary.
 
     // 1. Smooth continuous orbital auto-scrolling + magnetic 36-deg alignment when hovered/released
     const shouldAutoScroll =
@@ -1141,9 +1381,9 @@ export class ShowcaseStage {
       const nextScatter = stepIconScatterState(prevScatter, dt);
       this.scatterStates.set(id, nextScatter);
 
-      const floatY = this.reducedMotion ? 0 : Math.sin(t * 1.05 + entry.spec.phase) * 0.14;
-      const swayY = this.reducedMotion ? 0 : Math.sin(t * 0.6 + entry.spec.phase * 1.3) * 0.12;
-      const swayX = this.reducedMotion ? 0 : Math.cos(t * 0.5 + entry.spec.phase) * 0.05;
+      const floatY = this.reducedMotion ? 0 : Math.sin(t * 1.05 + entry.spec.phase) * 0.035;
+      const swayY = this.reducedMotion ? 0 : Math.sin(t * 0.6 + entry.spec.phase * 1.3) * 0.07;
+      const swayX = this.reducedMotion ? 0 : Math.cos(t * 0.5 + entry.spec.phase) * 0.035;
 
       const hoverIntensity = Math.max(0, nextState.glowBoost);
       const hoverTiltX = -this.smoothedParallax.y * 0.16 * hoverIntensity;
@@ -1279,16 +1519,7 @@ export class ShowcaseStage {
       hoverIconColor: this.hoverShaderColor,
     });
 
-    // 5. Gentle floating stardust drift
-    if (!this.motionPaused && !this.reducedMotion) {
-      const posAttr = this.dustPoints.geometry.attributes.position as THREE.BufferAttribute;
-      const arr = posAttr.array as Float32Array;
-      for (let i = 0; i < arr.length; i += 3) {
-        arr[i + 1] = this.dustBasePositions[i + 1] + Math.sin(t * 0.4 + i * 0.17) * 0.18;
-      }
-      posAttr.needsUpdate = true;
-      this.dustPoints.rotation.y = t * 0.02;
-    }
+    // 5. Subtle stardust drift handled cleanly in primary particle loop above
 
     // 5b. Subtle studio ambient & rim light breathing pulse
     const targetBreathScale = this.reducedMotion ? 0 : 1.0;

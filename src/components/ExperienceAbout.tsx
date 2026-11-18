@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { ArrowDownToLine, ArrowUpRight, Mail } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowDownToLine, ArrowUpRight, Linkedin, Mail } from 'lucide-react';
 
 const experience = [
   { company: '1st India News', role: 'Broadcast / Motion Graphics Designer', type: 'Broadcast · News Graphics', period: '01', description: 'Creating broadcast visuals, motion graphics and on-air design.' },
@@ -18,9 +18,11 @@ export function ExperienceAbout() {
       frame = requestAnimationFrame(() => {
         const stage = stageRef.current;
         if (!stage) return;
-        const stickyStage = stage.querySelector<HTMLElement>(".experience-stage");
-        const scrollable = Math.max(1, stage.offsetHeight - (stickyStage?.offsetHeight ?? window.innerHeight));
-        const progress = Math.max(0, Math.min(0.9999, -stage.getBoundingClientRect().top / scrollable));
+        const stickyStage = stage.querySelector<HTMLElement>('.experience-stage');
+        const stickyHeight = stickyStage?.offsetHeight ?? window.innerHeight;
+        // Reserve the final 100svh of the pin so Company 3 freezes while #about overlays it
+        const companyScrollSpan = Math.max(1, stage.offsetHeight - stickyHeight * 2);
+        const progress = Math.max(0, Math.min(0.9999, -stage.getBoundingClientRect().top / companyScrollSpan));
         const nextIndex = Math.min(experience.length - 1, Math.floor(progress * experience.length));
         setActiveIndex(current => current === nextIndex ? current : nextIndex);
       });
@@ -35,74 +37,182 @@ export function ExperienceAbout() {
     };
   }, []);
 
+  const jumpToMilestone = useCallback((index: number) => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const stickyStage = stage.querySelector<HTMLElement>('.experience-stage');
+    const stickyHeight = stickyStage?.offsetHeight ?? window.innerHeight;
+    const companyScrollSpan = Math.max(1, stage.offsetHeight - stickyHeight * 2);
+    const stageDocTop = stage.getBoundingClientRect().top + window.scrollY;
+    const targetProgress = (index + 0.15) / experience.length;
+    window.scrollTo({ top: stageDocTop + companyScrollSpan * targetProgress, behavior: 'smooth' });
+  }, []);
+
   return (
-    <div className="experience-about-stack relative z-40 -mt-[100vh]">
-      <section ref={stageRef} id="experience" aria-label="Professional experience" className="experience-pin relative h-[300svh] w-full">
-        <div className="experience-stage sticky top-0 z-20 flex h-[100svh] w-full flex-col justify-center overflow-hidden border-t border-white/[0.06] bg-[#050711] py-10 sm:py-14">
-          <div className="mx-auto mb-7 w-full max-w-7xl px-5 sm:mb-10 sm:px-8 lg:px-12">
-            <p className="mb-3 text-[9px] font-semibold tracking-[0.28em] text-violet-300/75 sm:text-[10px]">03 / CAREER JOURNEY</p>
+    <div className="experience-about-stack relative z-40 -mt-[100svh]">
+      {/* Section 03 · Experience: Deep Emerald Slate & Mint (#06110e) */}
+      <section ref={stageRef} id="experience" aria-label="Professional experience" className="experience-pin relative h-[400svh] w-full">
+        <div className="experience-stage sticky top-0 z-20 flex h-[100svh] w-full flex-col justify-center overflow-hidden border-t border-emerald-400/15 bg-[#06110e] pt-20 pb-8 sm:pt-24 sm:pb-12">
+          {/* Layer 1: Deep Emerald studio lighting */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                'radial-gradient(ellipse 64% 52% at 80% 24%, rgba(52, 211, 153, 0.14), transparent 64%), linear-gradient(175deg, #091a15 0%, #06110e 60%, #040b09 100%)',
+            }}
+          />
+
+          <div className="relative z-10 mx-auto mb-6 w-full max-w-7xl pl-5 pr-10 sm:mb-8 sm:px-8 lg:px-12">
+            <p className="portfolio-eyebrow mb-2.5 text-emerald-300/85">03 / CAREER JOURNEY</p>
             <div>
-              <h2 className="portfolio-heading-section font-semibold leading-[0.95] tracking-[-0.055em] text-white">Experience<span className="text-violet-300">.</span></h2>
-              <p className="mt-2 max-w-md text-xs leading-relaxed text-white/45 sm:mt-3 sm:text-sm">Scroll through the milestones of my career.</p>
+              <h2 className="portfolio-heading-section font-semibold tracking-[-0.045em] text-white">
+                Experience<span className="text-emerald-400">.</span>
+              </h2>
+              <p className="portfolio-body mt-2 max-w-md text-emerald-50/60">
+                Scroll through the milestones of my career.
+              </p>
             </div>
           </div>
 
-          <div className="experience-marquee w-full overflow-hidden">
+          <div className="experience-marquee relative z-10 w-full overflow-hidden">
             <div
               className="experience-track flex"
-              style={{ transform: `translate3d(-${activeIndex * 33.333333}%,0,0)`, transition: 'transform 850ms cubic-bezier(.22,1,.36,1)' }}
+              style={{ transform: `translate3d(-${activeIndex * 33.333333}%,0,0)`, transition: 'transform 560ms cubic-bezier(.22,1,.36,1)' }}
               aria-live="polite"
               aria-label="Professional experience timeline"
             >
               {experience.map((item, index) => (
-                <article key={item.period} aria-hidden={activeIndex !== index} className="flex min-h-[250px] w-1/3 shrink-0 basis-1/3 flex-col justify-center px-5 sm:min-h-[300px] sm:px-[10vw]">
-                  <div className="mx-auto w-full max-w-5xl">
-                    <p className="mb-4 text-[10px] font-semibold tracking-[0.26em] text-violet-300/80 sm:mb-5 sm:text-[11px]">{item.period} <span className="text-white/25">/ 03</span></p>
-                    <h3 className="portfolio-heading-company font-semibold leading-[0.98] tracking-[-0.06em] text-white">{item.company}</h3>
-                    <p className="mt-3 text-base font-medium text-white/75 sm:mt-5 sm:text-2xl">{item.role}</p>
-                    <p className="mt-2 text-[9px] tracking-[0.14em] text-white/40 sm:mt-3 sm:text-[11px] sm:tracking-[0.18em]">{item.type}</p>
-                    <p className="mt-3 max-w-xl text-xs leading-relaxed text-white/45 sm:mt-5 sm:text-sm">{item.description}</p>
+                <article key={item.period} aria-hidden={activeIndex !== index} className="flex w-1/3 shrink-0 basis-1/3 flex-col justify-center">
+                  <div className="mx-auto w-full max-w-7xl pl-5 pr-10 sm:px-8 lg:px-12">
+                    <div className="relative overflow-hidden rounded-2xl border border-emerald-400/20 bg-[#0b1d17]/88 p-6 shadow-[0_28px_80px_rgba(0,0,0,0.58),inset_0_1px_0_rgba(110,231,183,0.14)] backdrop-blur-md sm:p-10">
+                      <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-emerald-400/50 via-emerald-200/25 to-transparent" />
+                      <p className="portfolio-meta mb-3 font-mono font-semibold tracking-[0.22em] text-emerald-300 sm:mb-4">
+                        {item.period} <span className="text-white/30">/ 03</span>
+                      </p>
+                      <h3 className="portfolio-heading-company font-semibold tracking-[-0.045em] text-white">
+                        {item.company}
+                      </h3>
+                      <p className="portfolio-subhead mt-3 font-medium text-emerald-50/90 sm:mt-4">
+                        {item.role}
+                      </p>
+                      <p className="portfolio-eyebrow mt-2 text-emerald-200/55 sm:mt-3">
+                        {item.type}
+                      </p>
+                      <p className="portfolio-body mt-3 max-w-xl text-slate-300/75 sm:mt-4">
+                        {item.description}
+                      </p>
+                    </div>
                   </div>
                 </article>
               ))}
             </div>
           </div>
 
-          <div className="mx-auto mt-7 flex w-full max-w-7xl items-center justify-between px-5 sm:mt-9 sm:px-8 lg:px-12">
-            <span className="text-[9px] tracking-[0.2em] text-white/35 sm:text-[10px]">SCROLL TO EXPLORE</span>
+          <div className="relative z-10 mx-auto mt-6 flex w-full max-w-7xl items-center justify-between pl-5 pr-10 sm:mt-8 sm:px-8 lg:px-12">
+            <span className="portfolio-meta uppercase tracking-[0.2em] text-emerald-100/45">SCROLL TO EXPLORE</span>
             <div className="flex items-center gap-2" aria-label={`Experience ${activeIndex + 1} of 3`}>
               {experience.map((item, index) => (
-                <span key={item.period} aria-label={item.company} className={`h-1 rounded-full transition-all duration-500 ${activeIndex === index ? 'w-8 bg-violet-300' : 'w-3 bg-white/20'}`} />
+                <button
+                  key={item.period}
+                  type="button"
+                  onClick={() => jumpToMilestone(index)}
+                  aria-label={`View ${item.company}`}
+                  className="flex h-6 items-center px-0.5 focus-visible:outline-none"
+                >
+                  <span
+                    className={`block h-1.5 rounded-full transition-all duration-500 ${
+                      activeIndex === index ? 'w-9 bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.6)]' : 'w-3 bg-white/20 hover:bg-emerald-300/50'
+                    }`}
+                  />
+                </button>
               ))}
-              <span className="ml-1 min-w-8 text-right text-[9px] tabular-nums text-white/35">{String(activeIndex + 1).padStart(2, '0')} / 03</span>
+              <span className="portfolio-meta ml-1.5 min-w-10 text-right font-mono tabular-nums text-emerald-200/65">
+                {String(activeIndex + 1).padStart(2, '0')} / 03
+              </span>
             </div>
           </div>
         </div>
       </section>
 
+      {/* Section 04 · About: Deep Aubergine Indigo & Orchid (#0e0a1b) */}
       <section id="about" aria-label="About Yuvraj Singh" className="about-overlay relative z-50 -mt-[100svh]">
-        <div className="relative overflow-hidden border-t border-white/[0.06] bg-[#080a14] px-5 py-16 sm:px-8 sm:py-24 lg:px-12 lg:py-32">
-          <div className="pointer-events-none absolute -right-40 top-10 h-[420px] w-[420px] rounded-full bg-violet-500/[0.08] blur-[110px]" />
-          <div className="relative mx-auto grid max-w-7xl gap-9 sm:gap-12 lg:grid-cols-[1.15fr_0.85fr] lg:gap-20">
+        <div className="relative flex min-h-[100svh] items-center overflow-hidden border-t border-fuchsia-300/15 bg-[#0e0a1b] pt-24 pb-16 sm:pt-28 sm:pb-24 lg:py-28">
+          {/* Layer 1: Aubergine Indigo dual radial depth */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                'radial-gradient(circle at 82% 18%, rgba(232, 121, 249, 0.14), transparent 52%), radial-gradient(circle at 14% 85%, rgba(139, 92, 246, 0.10), transparent 55%), linear-gradient(160deg, #130d24 0%, #0e0a1b 60%, #080611 100%)',
+            }}
+          />
+
+          <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-10 pl-5 pr-10 sm:gap-12 sm:px-8 lg:grid-cols-[1.15fr_0.85fr] lg:gap-16 lg:px-12">
             <div>
-              <p className="mb-4 text-[9px] font-semibold tracking-[0.28em] text-violet-300/75 sm:mb-5 sm:text-[10px]">04 / A LITTLE ABOUT ME</p>
-              <h2 className="max-w-3xl portfolio-heading-display font-semibold leading-[0.96] tracking-[-0.06em] text-white">Designing ideas<br/>into <span className="text-violet-300">experiences.</span></h2>
-              <p className="mt-5 max-w-2xl text-sm leading-[1.75] text-white/55 sm:mt-8 sm:text-[15px] sm:leading-[1.9]">I’m Yuvraj Singh, a Senior Motion Graphics and 3D Designer with 12+ years of experience creating brand narratives, cinematic visuals and engaging digital experiences. I bring together 2D/3D motion, CGI, product visualisation and emerging AI workflows to turn ideas into memorable visual stories.</p>
-              <div className="mt-6 flex flex-wrap gap-2 sm:mt-9 sm:gap-3">
-                {['3D & CGI', 'Motion Design', 'Brand Storytelling', 'AI-Enabled Workflows'].map(tag => <span key={tag} className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-2 text-[10px] tracking-wide text-white/65 sm:px-4 sm:text-[11px]">{tag}</span>)}
+              <p className="portfolio-eyebrow mb-4 text-fuchsia-300/85">04 / A LITTLE ABOUT ME</p>
+              <h2 className="portfolio-heading-display max-w-3xl font-semibold tracking-[-0.045em] text-white">
+                Designing ideas <br />into <span className="text-fuchsia-300">experiences.</span>
+              </h2>
+              <p className="portfolio-body mt-6 max-w-2xl text-slate-200/75 sm:mt-8">
+                I’m Yuvraj Singh, a Senior Motion Graphics and 3D Designer with 12+ years of experience creating brand narratives, cinematic visuals and engaging digital experiences. I bring together 2D/3D motion, CGI, product visualisation and emerging AI workflows to turn ideas into memorable visual stories.
+              </p>
+              <div className="mt-7 flex flex-wrap gap-2.5 sm:mt-9 sm:gap-3">
+                {['3D & CGI', 'Motion Design', 'Brand Storytelling', 'AI-Enabled Workflows'].map((tag) => (
+                  <span
+                    key={tag}
+                    className="portfolio-meta inline-flex items-center gap-2 rounded-md border border-fuchsia-300/20 bg-white/[0.045] px-3.5 py-2 tracking-wide text-fuchsia-50/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                  >
+                    <span aria-hidden="true" className="h-1.5 w-1.5 bg-fuchsia-400" />
+                    <span>{tag}</span>
+                  </span>
+                ))}
               </div>
             </div>
-            <div className="flex flex-col justify-center gap-3 sm:gap-4">
-              <a href="mailto:" className="group flex min-h-[76px] items-center justify-between rounded-2xl border border-white/10 bg-white/[0.035] p-4 transition hover:border-violet-300/40 sm:p-5">
-                <span className="flex items-center gap-3 sm:gap-4"><Mail className="h-5 w-5 text-violet-300"/><span><span className="block text-[9px] tracking-[0.2em] text-white/35">LET’S TALK</span><span className="mt-1 block text-sm text-white/80">Email address to be added</span></span></span><ArrowUpRight className="h-4 w-4 text-white/40 transition group-hover:-translate-y-1 group-hover:translate-x-1"/>
+
+            <div className="flex flex-col justify-center gap-3.5 sm:gap-4">
+              <a
+                href="mailto:"
+                className="group flex min-h-[82px] items-center justify-between rounded-2xl border border-fuchsia-300/18 bg-[#17112b]/88 p-4 shadow-[0_20px_50px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(240,171,252,0.1)] backdrop-blur-md transition hover:border-fuchsia-300/45 sm:p-5"
+              >
+                <span className="flex items-center gap-3.5 sm:gap-4">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-fuchsia-300/25 bg-fuchsia-400/12 text-fuchsia-300">
+                    <Mail className="h-4 w-4" />
+                  </span>
+                  <span>
+                    <span className="portfolio-eyebrow block text-fuchsia-200/55">LET’S TALK</span>
+                    <span className="portfolio-body mt-0.5 block font-medium text-white/90">Email address to be added</span>
+                  </span>
+                </span>
+                <ArrowUpRight className="h-4 w-4 shrink-0 text-fuchsia-200/50 transition group-hover:-translate-y-1 group-hover:translate-x-1 group-hover:text-fuchsia-200" />
               </a>
-              <a href="https://www.linkedin.com/in/yuvrajsinghdesign/" target="_blank" rel="noreferrer" className="group flex min-h-[76px] items-center justify-between rounded-2xl border border-white/10 bg-white/[0.035] p-4 transition hover:border-violet-300/40 sm:p-5">
-                <span><span className="block text-[9px] tracking-[0.2em] text-white/35">CONNECT</span><span className="mt-1 block text-sm text-white/80">LinkedIn · Yuvraj Singh</span></span><ArrowUpRight className="h-4 w-4 text-white/40 transition group-hover:-translate-y-1 group-hover:translate-x-1"/>
+
+              <a
+                href="https://www.linkedin.com/in/yuvrajsinghdesign/"
+                target="_blank"
+                rel="noreferrer"
+                className="group flex min-h-[82px] items-center justify-between rounded-2xl border border-fuchsia-300/18 bg-[#17112b]/88 p-4 shadow-[0_20px_50px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(240,171,252,0.1)] backdrop-blur-md transition hover:border-fuchsia-300/45 sm:p-5"
+              >
+                <span className="flex items-center gap-3.5 sm:gap-4">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-fuchsia-300/25 bg-fuchsia-400/12 text-fuchsia-300">
+                    <Linkedin className="h-4 w-4" />
+                  </span>
+                  <span>
+                    <span className="portfolio-eyebrow block text-fuchsia-200/55">CONNECT</span>
+                    <span className="portfolio-body mt-0.5 block font-medium text-white/90">LinkedIn · Yuvraj Singh</span>
+                  </span>
+                </span>
+                <ArrowUpRight className="h-4 w-4 shrink-0 text-fuchsia-200/50 transition group-hover:-translate-y-1 group-hover:translate-x-1 group-hover:text-fuchsia-200" />
               </a>
-              <a href="/resume.pdf" download className="mt-1 flex min-h-[58px] items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 py-4 text-sm font-semibold text-white shadow-[0_12px_40px_rgba(139,92,246,0.22)] transition hover:-translate-y-1 hover:shadow-[0_16px_50px_rgba(139,92,246,0.34)] sm:mt-3 sm:py-5">
-                <ArrowDownToLine className="h-4 w-4"/> Download Resume
+
+              <a
+                href="/resume.pdf"
+                download
+                className="portfolio-body mt-1 flex min-h-[58px] items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-fuchsia-500 to-violet-600 px-6 py-4 font-semibold text-white shadow-[0_14px_42px_rgba(217,70,239,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_52px_rgba(217,70,239,0.42)] sm:mt-2"
+              >
+                <ArrowDownToLine className="h-4 w-4" /> Download Resume
               </a>
-              <p className="text-center text-[10px] text-white/30">Resume file will be connected here.</p>
+              <p className="portfolio-meta text-center text-fuchsia-100/40">Resume file will be connected here.</p>
             </div>
           </div>
         </div>

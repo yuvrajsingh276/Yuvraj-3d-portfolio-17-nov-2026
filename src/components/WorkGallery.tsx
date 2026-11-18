@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { PointerEvent as ReactPointerEvent } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { ArrowUpRight, X } from 'lucide-react';
+import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring } from 'motion/react';
+import { ArrowUpRight, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { computeMagneticOffset } from './magneticUtils';
 
 type Project = {
   id: string;
@@ -105,6 +107,64 @@ function Artwork({ mood, label, className = '' }: { mood: string; label: string;
   return <div aria-label={label} role="img" className={`relative overflow-hidden ${className}`} style={{ background: palettes[color] }} />;
 }
 
+const GALLERY_MAGNETIC_SPRING = { stiffness: 320, damping: 22, mass: 0.35 };
+
+function MagneticButton({
+  onClick,
+  ariaLabel,
+  className,
+  children,
+  dataCloseProject,
+}: {
+  onClick: () => void;
+  ariaLabel: string;
+  className: string;
+  children: ReactNode;
+  dataCloseProject?: boolean;
+}) {
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const reducedMotion = useReducedMotion() ?? false;
+  const targetX = useMotionValue(0);
+  const targetY = useMotionValue(0);
+  const springX = useSpring(targetX, GALLERY_MAGNETIC_SPRING);
+  const springY = useSpring(targetY, GALLERY_MAGNETIC_SPRING);
+
+  const handlePointerMove = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    if (reducedMotion || e.pointerType === 'touch' || !buttonRef.current) return;
+    const { x, y } = computeMagneticOffset(e.clientX, e.clientY, buttonRef.current.getBoundingClientRect(), {
+      strength: 0.34,
+      maxX: 9,
+      maxY: 9,
+      reducedMotion,
+    });
+    targetX.set(x);
+    targetY.set(y);
+  };
+
+  const reset = () => {
+    targetX.set(0);
+    targetY.set(0);
+  };
+
+  return (
+    <motion.button
+      ref={buttonRef}
+      type="button"
+      onClick={onClick}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={reset}
+      onPointerCancel={reset}
+      onBlur={reset}
+      aria-label={ariaLabel}
+      data-close-project={dataCloseProject ? '' : undefined}
+      style={{ x: springX, y: springY }}
+      className={className}
+    >
+      {children}
+    </motion.button>
+  );
+}
+
 export function WorkGallery() {
   const reduceMotion = useReducedMotion();
   const trackRef = useRef<HTMLDivElement>(null);
@@ -182,21 +242,60 @@ export function WorkGallery() {
     requestAnimationFrame(() => { drag.current.moved = false; });
   };
 
+  const scrollGalleryBy = useCallback((direction: -1 | 1) => {
+    const track = trackRef.current;
+    if (!track) return;
+    track.scrollBy({ left: direction * 340, behavior: reduceMotion ? 'auto' : 'smooth' });
+  }, [reduceMotion]);
+
   return (
-    <section className="work-exhibition relative flex h-full w-full items-center overflow-hidden bg-[#03050b] py-10 sm:py-14" aria-label="Selected projects">
-      <div className="mx-auto w-full max-w-[1600px]">
-        <div className="mb-9 flex items-end justify-between gap-5 px-6 sm:px-10 lg:px-16">
+    <section
+      className="work-exhibition relative flex h-full w-full items-center overflow-hidden bg-[#071019] py-6 sm:py-10"
+      aria-label="Selected projects"
+    >
+      {/* Layer 1: Deep Oceanic Slate atmospheric keylight & bottom grounding vignette */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(ellipse 68% 52% at 20% 14%, rgba(56, 189, 248, 0.14), transparent 64%), linear-gradient(180deg, #071019 0%, #091522 54%, #050b12 100%)',
+        }}
+      />
+
+      <div className="relative z-10 w-full">
+        <div className="mx-auto mb-6 flex w-full max-w-7xl items-end justify-between gap-6 pl-5 pr-10 sm:mb-8 sm:px-8 lg:px-12">
           <div>
-            <p className="mb-3 text-[10px] font-medium uppercase tracking-[.32em] text-violet-300/75">02 / Selected projects</p>
-            <h2 className="portfolio-heading-section font-semibold leading-none tracking-[-.055em] text-white">A few things I’ve made<span className="text-violet-300">.</span></h2>
-            <p className="mt-3 text-xs tracking-wide text-white/40 sm:text-sm">An ongoing collection of motion, image and digital craft.</p>
+            <p className="portfolio-eyebrow mb-2.5 text-sky-300/85">02 / Selected projects</p>
+            <h2 className="portfolio-heading-section font-semibold tracking-[-0.045em] text-white">
+              A few things I’ve made<span className="text-sky-400">.</span>
+            </h2>
+            <p className="portfolio-body mt-2.5 max-w-lg text-slate-300/65">
+              An ongoing collection of motion, image and digital craft.
+            </p>
           </div>
 
+          <div className="hidden items-center gap-2 sm:flex">
+            <MagneticButton
+              onClick={() => scrollGalleryBy(-1)}
+              ariaLabel="Scroll projects left"
+              className="portfolio-icon-button rounded-xl border border-sky-300/20 bg-sky-400/10 text-sky-100 transition hover:border-sky-300/45 hover:bg-sky-400/20"
+            >
+              <ChevronLeft size={18} />
+            </MagneticButton>
+            <MagneticButton
+              onClick={() => scrollGalleryBy(1)}
+              ariaLabel="Scroll projects right"
+              className="portfolio-icon-button rounded-xl border border-sky-300/20 bg-sky-400/10 text-sky-100 transition hover:border-sky-300/45 hover:bg-sky-400/20"
+            >
+              <ChevronRight size={18} />
+            </MagneticButton>
+          </div>
         </div>
 
         <div
           ref={trackRef}
-          className={`work-gallery-track group/gallery no-scrollbar flex items-center gap-4 overflow-x-auto px-6 pb-8 pt-5 sm:gap-6 sm:px-10 lg:gap-8 lg:px-16 ${dragging ? 'cursor-grabbing select-none' : 'cursor-grab'}`}
+          className={`work-gallery-track group/gallery no-scrollbar flex items-center gap-4 overflow-x-auto pb-6 pt-4 pl-5 pr-6 sm:gap-6 sm:pl-8 sm:pr-10 lg:gap-8 lg:pl-[max(3rem,calc((100vw-80rem)/2+3rem))] lg:pr-16 ${dragging ? 'cursor-grabbing select-none' : 'cursor-grab'}`}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -210,83 +309,105 @@ export function WorkGallery() {
               type="button"
               layoutId={`project-cover-${project.id}`}
               onClick={() => { if (!drag.current.moved) openProject(project); drag.current.moved = false; }}
-              whileHover={reduceMotion ? undefined : { y: -10, scale: 1.035 }}
-              whileFocus={reduceMotion ? undefined : { y: -8, scale: 1.025 }}
+              whileHover={reduceMotion ? undefined : { y: -10, scale: 1.03 }}
+              whileFocus={reduceMotion ? undefined : { y: -8, scale: 1.02 }}
               transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
               aria-label={`Open project: ${project.title}`}
-              className={`group relative w-[126px] min-w-[126px] sm:w-[150px] sm:min-w-[150px] hover:w-[250px] hover:min-w-[250px] sm:hover:w-[310px] sm:hover:min-w-[310px] focus-visible:w-[250px] focus-visible:min-w-[250px] sm:focus-visible:w-[310px] sm:focus-visible:min-w-[310px] shrink-0 overflow-hidden rounded-[5px] border border-white/[.12] bg-[#10121b] text-left shadow-[0_18px_55px_rgba(0,0,0,.32)] outline-none transition-[width,min-width,filter,border-color,opacity] duration-500 ease-[cubic-bezier(.22,1,.36,1)] opacity-80 group-hover/gallery:opacity-45 hover:!opacity-100 focus-visible:!opacity-100 hover:border-white/35 focus-visible:border-violet-300 focus-visible:ring-2 focus-visible:ring-violet-300/70 ${index % 2 === 0 ? 'mt-0' : 'mt-14'}`}
+              className={`group relative w-[126px] min-w-[126px] sm:w-[152px] sm:min-w-[152px] hover:w-[252px] hover:min-w-[252px] sm:hover:w-[310px] sm:hover:min-w-[310px] focus-visible:w-[252px] focus-visible:min-w-[252px] sm:focus-visible:w-[310px] sm:focus-visible:min-w-[310px] shrink-0 overflow-hidden rounded-xl border border-white/[0.14] bg-[#0b1623] text-left shadow-[0_24px_60px_rgba(0,0,0,0.52)] outline-none transition-[width,min-width,filter,border-color,opacity] duration-500 ease-[cubic-bezier(.22,1,.36,1)] opacity-88 group-hover/gallery:opacity-50 hover:!opacity-100 focus-visible:!opacity-100 hover:border-sky-300/45 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-300/70 ${index % 2 === 0 ? 'mt-0' : 'mt-12'}`}
               style={{ aspectRatio: '0.69' }}
             >
               <Artwork mood={project.mood} label={`PROJECT ${project.id}`} className="absolute inset-0 h-full w-full transition-transform duration-700 group-hover:scale-[1.04]" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100" />
+              <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-black/20 transition-opacity duration-300 group-hover:from-black/75" />
+              <span className="portfolio-meta pointer-events-none absolute left-3 top-3 font-mono font-medium tracking-[0.14em] text-white/75 drop-shadow sm:left-4 sm:top-4">
+                {project.id}
+              </span>
               <div className="absolute inset-x-0 bottom-0 p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100 sm:p-5">
-                <p className="mb-2 text-[8px] font-semibold tracking-[.25em] text-white/55 sm:text-[9px]">{project.category}</p>
-                <h3 className="max-w-[15ch] text-lg font-medium leading-tight tracking-[-.025em] text-white sm:text-xl">{project.title}</h3>
-                <span className="mt-4 flex items-center gap-2 text-[9px] uppercase tracking-[.2em] text-white/55 transition-colors group-hover:text-white">Explore project <ArrowUpRight size={12} /></span>
+                <p className="portfolio-eyebrow mb-2 text-white/75">{project.category}</p>
+                <h3 className="portfolio-card-title max-w-[15ch] font-semibold tracking-[-0.025em] text-white">{project.title}</h3>
+                <span className="portfolio-meta mt-3 flex items-center gap-2 uppercase tracking-[0.18em] text-white/75 transition-colors group-hover:text-white">
+                  Explore project <ArrowUpRight size={13} />
+                </span>
               </div>
               <span className="pointer-events-none absolute inset-0 bg-white/10 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
             </motion.button>
           ))}
         </div>
-        <div className="flex items-center justify-between px-6 text-[9px] uppercase tracking-[.24em] text-white/30 sm:px-10 lg:px-16">
-          <span>Drag to explore</span><span>01 — 10</span>
+
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between pl-5 pr-10 sm:px-8 lg:px-12">
+          <span className="portfolio-meta uppercase tracking-[0.22em] text-sky-200/45">Drag to explore</span>
+          <span className="portfolio-meta font-mono uppercase tracking-[0.22em] text-sky-200/55">01 — 10</span>
         </div>
       </div>
 
-      <AnimatePresence>
-        {activeProject && (
-          <motion.div
-            key="project-detail-overlay"
-            role="dialog" aria-modal="true" aria-label={`${activeProject.title} project details`} tabIndex={-1} className="fixed inset-0 z-[100] bg-[#05060b] text-white"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: reduceMotion ? 0 : 0.35 }}
-          >
-            <div ref={detailScrollRef} className="h-full overflow-y-auto overscroll-contain" tabIndex={-1}>
-              <div className="relative min-h-[78vh] sm:min-h-[88vh]">
-                <motion.div layoutId={`project-cover-${activeProject.id}`} className="absolute inset-0 overflow-hidden">
-                  <Artwork mood={activeProject.mood} label={`PROJECT ${activeProject.id} / SELECTED WORK`} className="h-full w-full" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#05060b] via-black/20 to-black/25" />
-                </motion.div>
-                <button data-close-project type="button" onClick={closeProject} aria-label="Close project and return to gallery" className="portfolio-icon-button fixed right-5 top-5 z-[110] rounded-full border border-white/25 bg-black/40 text-white backdrop-blur-xl transition hover:rotate-90 hover:bg-white/15 sm:right-8 sm:top-8"><X size={21} /></button>
-                <div className="relative z-10 flex min-h-[78vh] flex-col justify-end px-6 pb-12 pt-28 sm:min-h-[88vh] sm:px-12 sm:pb-16 lg:px-20">
-                  <p className="mb-4 text-[10px] font-semibold uppercase tracking-[.32em]" style={{ color: activeProject.accent }}>{activeProject.category}</p>
-                  <h2 className="max-w-4xl portfolio-heading-display font-semibold leading-[.94] tracking-[-.06em]">{activeProject.title}</h2>
-                  <p className="mt-6 max-w-xl text-sm leading-relaxed text-white/65 sm:text-base">{activeProject.description}</p>
-                  <div className="mt-8 flex items-center gap-3 text-[9px] uppercase tracking-[.25em] text-white/45"><span className="h-px w-10 bg-white/35" /> Scroll to explore the project</div>
-                </div>
-              </div>
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {activeProject && (
+              <motion.div
+                key="project-detail-overlay"
+                role="dialog" aria-modal="true" aria-label={`${activeProject.title} project details`} tabIndex={-1} className="fixed inset-0 z-[100] bg-[#071019] text-white"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: reduceMotion ? 0 : 0.35 }}
+              >
+                <div ref={detailScrollRef} className="h-full overflow-y-auto overscroll-contain" tabIndex={-1}>
+                  <div className="relative min-h-[78vh] sm:min-h-[88vh]">
+                    <motion.div layoutId={`project-cover-${activeProject.id}`} className="absolute inset-0 overflow-hidden">
+                      <Artwork mood={activeProject.mood} label={`PROJECT ${activeProject.id} / SELECTED WORK`} className="h-full w-full" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#071019] via-black/25 to-black/30" />
+                    </motion.div>
+                    <MagneticButton
+                      dataCloseProject
+                      onClick={closeProject}
+                      ariaLabel="Close project and return to gallery"
+                      className="portfolio-icon-button fixed right-5 top-5 z-[110] rounded-full border border-white/25 bg-black/45 text-white backdrop-blur-xl transition hover:rotate-90 hover:bg-white/15 sm:right-8 sm:top-8"
+                    >
+                      <X size={21} />
+                    </MagneticButton>
+                    <div className="relative z-10 flex min-h-[78vh] flex-col justify-end px-6 pb-12 pt-28 sm:min-h-[88vh] sm:px-12 sm:pb-16 lg:px-20">
+                      <p className="portfolio-eyebrow mb-4" style={{ color: activeProject.accent }}>{activeProject.category}</p>
+                      <h2 className="portfolio-heading-display max-w-4xl font-semibold tracking-[-0.045em]">{activeProject.title}</h2>
+                      <p className="portfolio-body mt-6 max-w-xl text-white/75">{activeProject.description}</p>
+                      <div className="portfolio-meta mt-8 flex items-center gap-3 uppercase tracking-[0.22em] text-white/55"><span className="h-px w-10 bg-white/35" /> Scroll to explore the project</div>
+                    </div>
+                  </div>
 
-              <div className="mx-auto max-w-[1500px] px-6 pb-24 pt-12 sm:px-10 sm:pt-20 lg:px-16">
-                <div className="mb-10 flex items-end justify-between border-b border-white/10 pb-5">
-                  <div><p className="mb-2 text-[9px] uppercase tracking-[.3em] text-white/35">Selected frames / {activeProject.id}</p><h3 className="text-3xl font-medium tracking-[-.04em] sm:text-5xl">Gallery<span style={{ color: activeProject.accent }}>.</span></h3></div>
-                  <span className="pb-1 text-[9px] uppercase tracking-[.22em] text-white/35">{activeProject.galleryImages.length} frames</span>
+                  <div className="mx-auto max-w-[1500px] px-6 pb-24 pt-12 sm:px-10 sm:pt-20 lg:px-16">
+                    <div className="mb-10 flex items-end justify-between border-b border-white/10 pb-5">
+                      <div><p className="portfolio-eyebrow mb-2 text-white/45">Selected frames / {activeProject.id}</p><h3 className="portfolio-heading-section font-medium tracking-[-0.04em]">Gallery<span style={{ color: activeProject.accent }}>.</span></h3></div>
+                      <span className="portfolio-meta pb-1 uppercase tracking-[0.2em] text-white/45">{activeProject.galleryImages.length} frames</span>
+                    </div>
+                    <div className="grid grid-cols-1 items-start gap-5 sm:grid-cols-12 sm:gap-7 lg:gap-10">
+                      {activeProject.galleryImages.map((image, index) => {
+                        const spans = ['sm:col-span-7', 'sm:col-span-5 sm:mt-24', 'sm:col-span-5 sm:col-start-2', 'sm:col-span-6 sm:col-start-7 sm:-mt-16'];
+                        return (
+                          <motion.div
+                            key={image}
+                            initial={reduceMotion ? false : { opacity: 0, y: 28 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true, amount: 0.15 }}
+                            transition={{ duration: 0.65, delay: reduceMotion ? 0 : 0.05, ease: [0.22, 1, 0.36, 1] }}
+                            className={`relative overflow-hidden rounded-xl border border-white/12 bg-[#0c1826] ${spans[index % spans.length]}`}
+                            style={{ aspectRatio: index % 3 === 1 ? '4 / 5' : index % 3 === 2 ? '5 / 4' : '16 / 10' }}
+                          >
+                            <Artwork mood={artworkColors[(projects.findIndex((project) => project.id === activeProject.id) * 3 + index) % artworkColors.length]} label={`FRAME 0${index + 1}`} className="h-full w-full min-h-[240px]" />
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                    <div className="portfolio-meta mt-20 flex justify-between border-t border-white/10 pt-6 uppercase tracking-[0.22em] text-white/50">
+                      <span>End of project</span>
+                      <button type="button" onClick={closeProject} className="transition hover:text-white">Back to all work ↑</button>
+                    </div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 items-start gap-5 sm:grid-cols-12 sm:gap-7 lg:gap-10">
-                  {activeProject.galleryImages.map((image, index) => {
-                    const spans = ['sm:col-span-7', 'sm:col-span-5 sm:mt-24', 'sm:col-span-5 sm:col-start-2', 'sm:col-span-6 sm:col-start-7 sm:-mt-16'];
-                    return (
-                      <motion.div
-                        key={image}
-                        initial={reduceMotion ? false : { opacity: 0, y: 28 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true, amount: 0.15 }}
-                        transition={{ duration: 0.65, delay: reduceMotion ? 0 : 0.05, ease: [0.22, 1, 0.36, 1] }}
-                        className={`relative overflow-hidden border border-white/10 bg-[#11131c] ${spans[index % spans.length]}`}
-                        style={{ aspectRatio: index % 3 === 1 ? '4 / 5' : index % 3 === 2 ? '5 / 4' : '16 / 10' }}
-                      >
-                        <Artwork mood={artworkColors[(projects.findIndex((project) => project.id === activeProject.id) * 3 + index) % artworkColors.length]} label={`FRAME 0${index + 1}`} className="h-full w-full min-h-[240px]" />
-                      </motion.div>
-                    );
-                  })}
-                </div>
-                <div className="mt-20 flex justify-between border-t border-white/10 pt-6 text-[9px] uppercase tracking-[.24em] text-white/40"><span>End of project</span><button type="button" onClick={closeProject} className="transition hover:text-white">Back to all work ↑</button></div>
-              </div>
-            </div>
-          </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
         )}
-      </AnimatePresence>
     </section>
   );
 }

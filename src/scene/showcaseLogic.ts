@@ -316,6 +316,101 @@ export function computeUniformScreenScaleFactor(cameraDist: number, slotZ: numbe
   return Math.max(0.62, Math.min(1.48, (safeDist - slotZ) / safeDist));
 }
 
+export interface OrbitParams {
+  radiusX: number;
+  radiusY: number;
+  tiltRad: number;
+}
+
+export function getOrbitParams(aspect = 1.6): OrbitParams {
+  const isPortrait = aspect < 0.85;
+  return {
+    radiusX: isPortrait ? 5.0 : 9.35,
+    radiusY: isPortrait ? 5.45 : 4.08,
+    tiltRad: (22 * Math.PI) / 180,
+  };
+}
+
+interface OrbitArcLut {
+  thetas: Float64Array;
+  cumLengths: Float64Array;
+  totalLength: number;
+}
+
+const orbitLutCache = new Map<string, OrbitArcLut>();
+
+function getOrbitArcLut(params: OrbitParams): OrbitArcLut {
+  const key = `${params.radiusX.toFixed(3)}:${params.radiusY.toFixed(3)}:${params.tiltRad.toFixed(4)}`;
+  const cached = orbitLutCache.get(key);
+  if (cached) return cached;
+
+  const steps = 720;
+  const thetas = new Float64Array(steps + 1);
+  const cumLengths = new Float64Array(steps + 1);
+  const cosTilt = Math.cos(params.tiltRad);
+  const sinTilt = Math.sin(params.tiltRad);
+
+  let prevX = params.radiusX;
+  let prevY = 0;
+  let prevZ = 0;
+  let acc = 0;
+
+  for (let i = 1; i <= steps; i++) {
+    const theta = (i / steps) * Math.PI * 2;
+    const x = Math.cos(theta) * params.radiusX;
+    const orbitY = Math.sin(theta) * params.radiusY;
+    const y = orbitY * cosTilt;
+    const z = orbitY * sinTilt;
+    acc += Math.hypot(x - prevX, y - prevY, z - prevZ);
+    thetas[i] = theta;
+    cumLengths[i] = acc;
+    prevX = x;
+    prevY = y;
+    prevZ = z;
+  }
+
+  const lut: OrbitArcLut = { thetas, cumLengths, totalLength: acc };
+  orbitLutCache.set(key, lut);
+  return lut;
+}
+
+/**
+ * Samples a 3D point on the tilted orbital ellipse by normalized arc length [0, 1)
+ * so equal increments in `arcFraction` yield identical 3D spacing around the ring.
+ */
+export function sampleOrbitPoint(
+  arcFraction: number,
+  aspect = 1.6,
+  scale = 1
+): [number, number, number] {
+  const params = getOrbitParams(aspect);
+  const lut = getOrbitArcLut(params);
+  const wrapped = ((arcFraction % 1) + 1) % 1;
+  const targetLen = wrapped * lut.totalLength;
+
+  // Binary search in cumulative arc-length table
+  let lo = 0;
+  let hi = lut.cumLengths.length - 1;
+  while (lo + 1 < hi) {
+    const mid = (lo + hi) >> 1;
+    if (lut.cumLengths[mid] <= targetLen) lo = mid;
+    else hi = mid;
+  }
+
+  const lenA = lut.cumLengths[lo];
+  const lenB = lut.cumLengths[hi];
+  const segSpan = Math.max(1e-9, lenB - lenA);
+  const frac = (targetLen - lenA) / segSpan;
+  const theta = lut.thetas[lo] + (lut.thetas[hi] - lut.thetas[lo]) * frac;
+
+  const orbitY = Math.sin(theta) * params.radiusY * scale;
+  return [
+    Math.cos(theta) * params.radiusX * scale,
+    orbitY * Math.cos(params.tiltRad),
+    orbitY * Math.sin(params.tiltRad),
+  ];
+}
+
 export interface OrbitalSlot {
   id: string;
   position: [number, number, number];
@@ -329,23 +424,17 @@ export function computeOrbitalLayout(
   aspect = 1.6,
   angleOffsetDeg = 0
 ): OrbitalSlot[] {
-  const isPortrait = aspect < 0.85;
-  // A shared orbital ellipse with per-tool depth staging for a true foreground / background read.
-  // Catalog depth bias is deliberately scaled so the orbit has visible Z separation on wide screens.
-  const radiusX = isPortrait ? 5.0 : 9.35;
-  const radiusY = isPortrait ? 5.45 : 4.08;
-  const tilt = (20 * Math.PI) / 180;
+  const count = Math.max(1, tools.length);
+  const offsetFraction = angleOffsetDeg / 360;
 
   return tools.map((tool, index) => {
-    const rad = ((tool.angleDeg + angleOffsetDeg) * Math.PI) / 180;
-    const x = Math.cos(rad) * radiusX;
-    const orbitY = Math.sin(rad) * radiusY;
-    const y = orbitY * Math.cos(tilt);
-    const z = orbitY * Math.sin(tilt) + tool.zDepthBias * 2;
+    // Distribute icons around the ellipse by equal arc-length starting from top (0.25)
+    const arcFraction = 0.25 - index / count + offsetFraction;
+    const [x, y, z] = sampleOrbitPoint(arcFraction, aspect, 1);
 
-    const baseRotationY = Math.atan2(-x, 15 - z) * 0.48;
-    const baseRotationX = Math.sin(rad) * 0.12 + (index % 2 === 0 ? 0.06 : -0.05);
-    const baseRotationZ = Math.cos(rad) * -0.14;
+    const baseRotationY = Math.atan2(-x, 18 - z) * 0.36;
+    const baseRotationX = (y / 5.5) * 0.06;
+    const baseRotationZ = -(x / 10) * 0.04;
 
     return {
       id: tool.id,
@@ -355,6 +444,45 @@ export function computeOrbitalLayout(
       baseRotationZ,
     };
   });
+}
+
+/**
+ * Computes target 3D displacement for a particle when hovered by the cursor.
+ * Returns [dx, dy, dz] pushing particles smoothly outward & slightly swirled around the pointer.
+ */
+export function computeParticleHoverDisplacement(
+  particlePos: readonly [number, number, number],
+  pointerWorld: readonly [number, number, number],
+  pointerActive: number,
+  influenceRadius = 2.8,
+  maxPush = 1.25
+): [number, number, number] {
+  if (pointerActive <= 0.01) return [0, 0, 0];
+
+  const dx = particlePos[0] - pointerWorld[0];
+  const dy = particlePos[1] - pointerWorld[1];
+  const dz = particlePos[2] - pointerWorld[2];
+  const dist = Math.hypot(dx, dy, dz);
+
+  if (dist >= influenceRadius || dist < 1e-5) {
+    return [0, 0, 0];
+  }
+
+  const falloff = 1 - dist / influenceRadius;
+  const smooth = falloff * falloff * (3 - 2 * falloff);
+  const strength = smooth * maxPush * Math.min(1, Math.max(0, pointerActive));
+
+  const invDist = 1 / dist;
+  const nx = dx * invDist;
+  const ny = dy * invDist;
+  const nz = dz * invDist;
+
+  // Outward radial push + gentle perpendicular swirl for organic motion
+  return [
+    (nx - ny * 0.28) * strength,
+    (ny + nx * 0.28) * strength,
+    nz * strength * 0.6 + smooth * 0.25 * pointerActive,
+  ];
 }
 
 /**
@@ -821,7 +949,7 @@ export function computeDecorativePropsLayout(aspect = 1.6): DecorativePropSlot[]
   return [
     {
       nodeName: 'bubble_right',
-      position: isPortrait ? [5.45, 4.75, 0.85] : [7.85, 4.85, 0.85],
+      position: isPortrait ? [5.6, 5.4, 0.6] : [9.8, 4.35, 0.4],
       rotation: [0.06, -0.18, 0.04],
       targetSize: 0.9,
       phase: 0.5,
@@ -829,7 +957,7 @@ export function computeDecorativePropsLayout(aspect = 1.6): DecorativePropSlot[]
     },
     {
       nodeName: 'deco_triangle',
-      position: isPortrait ? [6.25, 0.85, -0.6] : [8.0, 2.7, -0.6],
+      position: isPortrait ? [6.35, 1.35, -0.5] : [10.65, 1.85, -0.5],
       rotation: [0.15, -0.35, 0.25],
       targetSize: 0.44,
       phase: 1.6,
@@ -837,7 +965,7 @@ export function computeDecorativePropsLayout(aspect = 1.6): DecorativePropSlot[]
     },
     {
       nodeName: 'exclaim_left_dot',
-      position: isPortrait ? [-6.25, -0.55, 0.7] : [-9.3, 0.0, 0.7],
+      position: isPortrait ? [-6.4, -0.9, 0.5] : [-10.65, -0.85, 0.5],
       rotation: [0.05, 0.2, -0.22],
       targetSize: 0.56,
       phase: 2.3,
@@ -845,7 +973,7 @@ export function computeDecorativePropsLayout(aspect = 1.6): DecorativePropSlot[]
     },
     {
       nodeName: 'exclaim_right_dot',
-      position: isPortrait ? [-5.45, 4.15, 0.5] : [-6.85, 3.65, 0.5],
+      position: isPortrait ? [-5.6, 5.1, 0.4] : [-9.2, 3.85, 0.4],
       rotation: [0.04, 0.14, 0.18],
       targetSize: 0.52,
       phase: 3.1,
@@ -853,7 +981,7 @@ export function computeDecorativePropsLayout(aspect = 1.6): DecorativePropSlot[]
     },
     {
       nodeName: 'sparkle_1',
-      position: isPortrait ? [-5.25, -4.45, 0.95] : [-6.65, -3.55, 0.95],
+      position: isPortrait ? [-5.5, -5.2, 0.7] : [-8.8, -3.75, 0.7],
       rotation: [0, 0, 0.15],
       targetSize: 0.36,
       phase: 0.9,
@@ -861,7 +989,7 @@ export function computeDecorativePropsLayout(aspect = 1.6): DecorativePropSlot[]
     },
     {
       nodeName: 'sparkle_2',
-      position: isPortrait ? [-1.95, 6.45, -0.4] : [-2.35, 4.05, -0.4],
+      position: isPortrait ? [-2.8, 6.7, -0.3] : [-5.2, 4.95, -0.3],
       rotation: [0, 0, -0.12],
       targetSize: 0.28,
       phase: 1.9,
@@ -869,7 +997,7 @@ export function computeDecorativePropsLayout(aspect = 1.6): DecorativePropSlot[]
     },
     {
       nodeName: 'sparkle_3',
-      position: isPortrait ? [1.95, 6.75, 0.65] : [2.35, 4.45, 0.65],
+      position: isPortrait ? [2.8, 6.8, 0.5] : [5.2, 4.95, 0.5],
       rotation: [0, 0, 0.22],
       targetSize: 0.32,
       phase: 2.8,
@@ -877,7 +1005,7 @@ export function computeDecorativePropsLayout(aspect = 1.6): DecorativePropSlot[]
     },
     {
       nodeName: 'sparkle_4',
-      position: isPortrait ? [-1.95, -6.55, 0.55] : [-2.35, -4.05, 0.55],
+      position: isPortrait ? [-2.8, -6.7, 0.4] : [-5.2, -4.85, 0.4],
       rotation: [0, 0, 0.08],
       targetSize: 0.26,
       phase: 3.7,
@@ -885,7 +1013,7 @@ export function computeDecorativePropsLayout(aspect = 1.6): DecorativePropSlot[]
     },
     {
       nodeName: 'sparkle_5',
-      position: isPortrait ? [5.25, -3.85, 0.75] : [6.65, -2.55, 0.75],
+      position: isPortrait ? [5.5, -5.0, 0.55] : [8.8, -3.75, 0.55],
       rotation: [0, 0, -0.18],
       targetSize: 0.3,
       phase: 4.5,

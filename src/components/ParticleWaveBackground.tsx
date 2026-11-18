@@ -38,7 +38,7 @@ export function ParticleWaveBackground() {
       seed = (seed * 16807) % 2147483647;
       return (seed - 1) / 2147483646;
     };
-    const gridCellSize = 108;
+    const gridCellSize = 34;
     let gridCols = 1;
     let gridRows = 1;
     const rebuildGrid = () => {
@@ -76,9 +76,9 @@ export function ParticleWaveBackground() {
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
         const last = glowTrail[glowTrail.length - 1];
-        if (!last || Math.hypot(x - last.x, y - last.y) > 18) {
-          glowTrail.push({ x, y, born: elapsed, hue: glowTrail.length % 2 });
-          if (glowTrail.length > 14) glowTrail.shift();
+        if (!last || Math.hypot(x - last.x, y - last.y) > 12) {
+          glowTrail.push({ x, y, born: elapsed, hue: glowTrail.length % 3 });
+          if (glowTrail.length > 18) glowTrail.shift();
         }
       }
     };
@@ -97,43 +97,16 @@ export function ParticleWaveBackground() {
       const centerY = height * 0.62;
       const aura = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, width * 0.9);
       aura.addColorStop(0, 'rgba(56,189,248,0.055)');
-      aura.addColorStop(0.5, 'rgba(99,102,241,0.026)');
+      aura.addColorStop(0.5, 'rgba(139,92,246,0.032)');
       aura.addColorStop(1, 'rgba(1,2,7,0)');
       ctx.fillStyle = aura;
       ctx.fillRect(0, 0, width, height);
 
-      // Static, understated grid. Pointer movement leaves a fading purple/red light trail.
+      // Fine static purple-tinted micro grid
       const cellW = width / Math.max(1, gridCols);
       const cellH = height / Math.max(1, gridRows);
-      for (let row = 0; row < gridRows; row++) {
-        for (let col = 0; col < gridCols; col++) {
-          const cx = (col + 0.5) * cellW;
-          const cy = (row + 0.5) * cellH;
-          let glow = 0;
-          let hue = 0;
-          for (let i = 0; i < glowTrail.length; i++) {
-            const point = glowTrail[i];
-            const age = time - point.born;
-            if (age > 2.4) continue;
-            const distance = Math.hypot(cx - point.x, cy - point.y);
-            const influence = Math.max(0, 1 - distance / (Math.min(cellW, cellH) * 2.25));
-            const strength = influence * Math.pow(1 - age / 2.4, 1.45);
-            if (strength > glow) {
-              glow = strength;
-              hue = point.hue;
-            }
-          }
-          if (glow > 0.012) {
-            const color = hue === 0 ? '168,85,247' : '244,63,94';
-            ctx.fillStyle = `rgba(${color},${(glow * 0.23).toFixed(3)})`;
-            ctx.fillRect(col * cellW + 1, row * cellH + 1, cellW - 2, cellH - 2);
-          }
-        }
-      }
-
-      // Fine static grid lines remain subtle until the pointer passes nearby.
-      ctx.lineWidth = 0.65;
-      ctx.strokeStyle = 'rgba(145,150,180,0.045)';
+      ctx.lineWidth = 0.6;
+      ctx.strokeStyle = 'rgba(148,136,210,0.052)';
       ctx.beginPath();
       for (let col = 0; col <= gridCols; col++) {
         const x = col * cellW;
@@ -147,19 +120,105 @@ export function ParticleWaveBackground() {
       }
       ctx.stroke();
 
+      // Prune expired hover trail points
       for (let i = glowTrail.length - 1; i >= 0; i--) {
+        if (time - glowTrail[i].born > 1.9) {
+          glowTrail.splice(i, 1);
+        }
+      }
+
+      // Small purple cubic grid highlight & glowing borders around cursor + fading trail
+      const activeSources: { x: number; y: number; weight: number; hue: number }[] = [];
+      if (pointerInside) {
+        activeSources.push({ x: targetX * width, y: targetY * height, weight: 1.0, hue: 0 });
+      }
+      for (let i = 0; i < glowTrail.length; i++) {
         const point = glowTrail[i];
         const age = time - point.born;
-        if (age > 2.4) {
-          glowTrail.splice(i, 1);
-          continue;
+        const fade = Math.pow(Math.max(0, 1 - age / 1.9), 1.45);
+        if (fade > 0.02) {
+          activeSources.push({ x: point.x, y: point.y, weight: fade * 0.85, hue: point.hue });
         }
-        const fade = Math.pow(1 - age / 2.4, 1.35);
-        const radius = Math.min(width, height) * (0.16 + age * 0.035);
+      }
+
+      if (activeSources.length > 0) {
+        const influenceRadius = Math.max(cellW, cellH) * 4.4;
+        const padCols = Math.ceil(influenceRadius / Math.max(1, cellW));
+        const padRows = Math.ceil(influenceRadius / Math.max(1, cellH));
+        let minCol = gridCols - 1;
+        let maxCol = 0;
+        let minRow = gridRows - 1;
+        let maxRow = 0;
+        for (let i = 0; i < activeSources.length; i++) {
+          const sc = Math.floor(activeSources[i].x / Math.max(1, cellW));
+          const sr = Math.floor(activeSources[i].y / Math.max(1, cellH));
+          if (sc - padCols < minCol) minCol = sc - padCols;
+          if (sc + padCols > maxCol) maxCol = sc + padCols;
+          if (sr - padRows < minRow) minRow = sr - padRows;
+          if (sr + padRows > maxRow) maxRow = sr + padRows;
+        }
+        minCol = Math.max(0, minCol);
+        maxCol = Math.min(gridCols - 1, maxCol);
+        minRow = Math.max(0, minRow);
+        maxRow = Math.min(gridRows - 1, maxRow);
+
+        const cellColors = ['168,85,247', '139,92,246', '192,132,252'];
+        ctx.lineWidth = 1;
+        for (let row = minRow; row <= maxRow; row++) {
+          for (let col = minCol; col <= maxCol; col++) {
+            const cx = (col + 0.5) * cellW;
+            const cy = (row + 0.5) * cellH;
+            let glow = 0;
+            let hue = 0;
+            for (let i = 0; i < activeSources.length; i++) {
+              const src = activeSources[i];
+              const distance = Math.hypot(cx - src.x, cy - src.y);
+              if (distance >= influenceRadius) continue;
+              const falloff = 1 - distance / influenceRadius;
+              const strength = falloff * falloff * src.weight;
+              if (strength > glow) {
+                glow = strength;
+                hue = src.hue;
+              }
+            }
+            if (glow > 0.015) {
+              const rgb = cellColors[hue % cellColors.length];
+              const x0 = col * cellW + 0.75;
+              const y0 = row * cellH + 0.75;
+              const cw = Math.max(1, cellW - 1.5);
+              const ch = Math.max(1, cellH - 1.5);
+              ctx.fillStyle = `rgba(${rgb},${(glow * 0.24).toFixed(3)})`;
+              ctx.fillRect(x0, y0, cw, ch);
+              ctx.strokeStyle = `rgba(216,180,254,${(glow * 0.42).toFixed(3)})`;
+              ctx.strokeRect(x0, y0, cw, ch);
+            }
+          }
+        }
+      }
+
+      // Soft purple glow halo under active pointer and recent trail
+      if (pointerInside) {
+        const px = targetX * width;
+        const py = targetY * height;
+        const cursorRadius = Math.min(width, height) * 0.2;
+        const cursorGlow = ctx.createRadialGradient(px, py, 0, px, py, cursorRadius);
+        cursorGlow.addColorStop(0, 'rgba(168,85,247,0.22)');
+        cursorGlow.addColorStop(0.45, 'rgba(139,92,246,0.095)');
+        cursorGlow.addColorStop(1, 'rgba(139,92,246,0)');
+        ctx.fillStyle = cursorGlow;
+        ctx.fillRect(px - cursorRadius, py - cursorRadius, cursorRadius * 2, cursorRadius * 2);
+      }
+
+      for (let i = 0; i < glowTrail.length; i++) {
+        const point = glowTrail[i];
+        const age = time - point.born;
+        const fade = Math.pow(Math.max(0, 1 - age / 1.9), 1.4);
+        if (fade <= 0.02) continue;
+        const radius = Math.min(width, height) * (0.11 + age * 0.028);
         const glow = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, radius);
-        const color = point.hue === 0 ? '168,85,247' : '244,63,94';
-        glow.addColorStop(0, `rgba(${color},${(0.16 * fade).toFixed(3)})`);
-        glow.addColorStop(0.42, `rgba(${color},${(0.075 * fade).toFixed(3)})`);
+        const color = point.hue === 1 ? '139,92,246' : '168,85,247';
+        glow.addColorStop(0, `rgba(${color},${(0.14 * fade).toFixed(3)})`);
+        glow.addColorStop(0.45, `rgba(${color},${(0.06 * fade).toFixed(3)})`);
         glow.addColorStop(1, `rgba(${color},0)`);
         ctx.fillStyle = glow;
         ctx.fillRect(point.x - radius, point.y - radius, radius * 2, radius * 2);
@@ -188,9 +247,10 @@ export function ParticleWaveBackground() {
           const dx = x - pointerX * width;
           const dy = y - pointerY * height;
           const distance = Math.hypot(dx, dy);
-          const repelRadius = Math.min(width, height) * 0.19;
+          const repelRadius = Math.min(width, height) * 0.22;
           if (distance < repelRadius && distance > 0.001) {
-            const force = (1 - distance / repelRadius) * 34;
+            const falloff = 1 - distance / repelRadius;
+            const force = falloff * falloff * 54;
             x += (dx / distance) * force;
             y += (dy / distance) * force;
           }
@@ -243,8 +303,20 @@ export function ParticleWaveBackground() {
       schedule();
     };
 
+    const updateScrollVisibility = () => {
+      const nextVisible = window.scrollY < (window.innerHeight || 900) * 1.05;
+      if (nextVisible === visible) return;
+      visible = nextVisible;
+      if (visible) {
+        lastFrame = 0;
+        schedule();
+      } else {
+        stop();
+      }
+    };
+
     const observer = new IntersectionObserver(([entry]) => {
-      visible = entry.isIntersecting;
+      visible = entry.isIntersecting && window.scrollY < (window.innerHeight || 900) * 1.05;
       if (visible) {
         lastFrame = 0;
         schedule();
@@ -256,17 +328,19 @@ export function ParticleWaveBackground() {
     const resizeObserver = new ResizeObserver(resize);
     resizeObserver.observe(host);
     document.addEventListener('visibilitychange', schedule);
+    window.addEventListener('scroll', updateScrollVisibility, { passive: true });
     window.addEventListener('mousemove', onPointer, { passive: true });
     window.addEventListener('blur', resetPointer);
     resize();
 
-    if (!reducedMotion) schedule();
+    if (!reducedMotion && visible) schedule();
 
     return () => {
       stop();
       observer.disconnect();
       resizeObserver.disconnect();
       document.removeEventListener('visibilitychange', schedule);
+      window.removeEventListener('scroll', updateScrollVisibility);
       window.removeEventListener('mousemove', onPointer);
       window.removeEventListener('blur', resetPointer);
     };
