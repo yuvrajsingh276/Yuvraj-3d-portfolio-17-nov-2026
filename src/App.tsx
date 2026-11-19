@@ -135,6 +135,7 @@ export default function App() {
   const handleNavClick = useCallback(
     (e: ReactMouseEvent<HTMLAnchorElement>, id: NavSectionId) => {
       e.preventDefault();
+      window.dispatchEvent(new Event('portfolio:navigate'));
       scrollToSection(id, id);
     },
     [scrollToSection]
