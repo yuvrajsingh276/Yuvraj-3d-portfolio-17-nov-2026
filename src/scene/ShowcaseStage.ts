@@ -686,10 +686,10 @@ export class ShowcaseStage {
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
     const mat = new THREE.PointsMaterial({
-      size: 0.095,
+      size: 0.108,
       map: this.textures.glowSprite,
       transparent: true,
-      opacity: 0.72,
+      opacity: 0.8,
       vertexColors: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
@@ -1263,6 +1263,10 @@ export class ShowcaseStage {
         positions[offset + 2] = baseZ + this.orbitParticleHoverOffsets[offset + 2];
       }
       posAttr.needsUpdate = true;
+      // A restrained breathing glow keeps the orbit sparks softly luminous.
+      const orbitMaterial = this.orbitParticles.material as THREE.PointsMaterial;
+      orbitMaterial.opacity = 0.76 + Math.sin(t * 1.55) * 0.045;
+      orbitMaterial.size = 0.104 + Math.sin(t * 1.2) * 0.006;
     }
 
     // Move background stardust particles through world-space Z depth + displace on cursor hover
