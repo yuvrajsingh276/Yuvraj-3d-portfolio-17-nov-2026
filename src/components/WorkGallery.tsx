@@ -1,16 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { ArrowLeft, ArrowRight, Check, Maximize2, Play, Plus, Search, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Maximize2, Play, X } from 'lucide-react';
 import {
   collectGalleryPreloadKeys,
-  filterWorkProjects,
   getMediaGridClasses,
   getProjectById,
   projects,
-  WORK_NAV_CATEGORIES,
   type Project,
   type ProjectMedia,
-  type WorkNavCategory,
 } from '../data/workCatalog';
 import { resolveWorkAsset } from '../data/workAssets';
 import { GalleryPreloader, useImagePreloader } from './GalleryPreloader';
@@ -93,11 +90,7 @@ function Visual({
 
 export function WorkGallery({ onOpenProject }: { onOpenProject: (projectId: string) => void }) {
   const reduceMotion = useReducedMotion();
-  const [activeCategory, setActiveCategory] = useState<WorkNavCategory>('ALL WORK');
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [active, setActive] = useState(0);
-  const [savedIds, setSavedIds] = useState<string[]>([]);
   const railRef = useRef<HTMLDivElement | null>(null);
 
   const preloadUrls = useMemo(
@@ -106,41 +99,23 @@ export function WorkGallery({ onOpenProject }: { onOpenProject: (projectId: stri
   );
   const { ready, percent } = useImagePreloader(preloadUrls);
 
-  const visibleProjects = useMemo(
-    () => filterWorkProjects(activeCategory, searchQuery),
-    [activeCategory, searchQuery]
-  );
-
-  const safeIndex = visibleProjects.length > 0 ? Math.min(active, visibleProjects.length - 1) : 0;
-  const project = visibleProjects[safeIndex] ?? projects[0];
+  const safeIndex = projects.length > 0 ? Math.min(active, projects.length - 1) : 0;
+  const project = projects[safeIndex] ?? projects[0];
   const heroSrc = resolveWorkAsset(project.workSectionHeroKey ?? project.heroCoverKey ?? project.cardCoverKey);
-  const isSaved = savedIds.includes(project.id);
 
   const select = useCallback(
     (index: number) => {
-      if (visibleProjects.length === 0) return;
-      const nextIndex = (index + visibleProjects.length) % visibleProjects.length;
+      if (projects.length === 0) return;
+      const nextIndex = (index + projects.length) % projects.length;
       setActive(nextIndex);
       const rail = railRef.current;
       const card = rail?.children[nextIndex] as HTMLElement | undefined;
       card?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
     },
-    [visibleProjects.length]
+    []
   );
 
   const move = useCallback((direction: number) => select(safeIndex + direction), [safeIndex, select]);
-
-  const handleCategoryChange = useCallback((category: WorkNavCategory) => {
-    setActiveCategory(category);
-    setActive(0);
-    if (railRef.current) {
-      railRef.current.scrollLeft = 0;
-    }
-  }, []);
-
-  const toggleSaved = useCallback((id: string) => {
-    setSavedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
-  }, []);
 
   const highlightMetric =
     project.media.length > 0 ? `${project.media.length} Assets` : '98% Match';
@@ -198,81 +173,7 @@ export function WorkGallery({ onOpenProject }: { onOpenProject: (projectId: stri
         className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,#050608_0%,#050608_31%,rgba(5,6,8,0.90)_46%,rgba(5,6,8,0.35)_64%,transparent_84%)]"
       />
 
-      {/* Top streaming-style category bar + search & avatar */}
-      <div className="relative z-20 flex shrink-0 items-center justify-between gap-2 px-4 pt-4 pr-10 sm:gap-4 sm:px-10 sm:pt-5 sm:pr-14 lg:px-14 lg:pr-16">
-        <nav
-          aria-label="Work categories"
-          className="no-scrollbar flex min-w-0 flex-nowrap items-center gap-2.5 overflow-x-auto whitespace-nowrap sm:gap-8"
-        >
-          {WORK_NAV_CATEGORIES.map((category) => {
-            const isSelected = activeCategory === category;
-            return (
-              <button
-                key={category}
-                type="button"
-                onClick={() => handleCategoryChange(category)}
-                className={`shrink-0 text-[9px] font-semibold uppercase tracking-[0.09em] transition-colors sm:text-[11px] sm:tracking-[0.14em] ${
-                  isSelected ? 'text-white' : 'text-white/65 hover:text-white'
-                }`}
-              >
-                {category}
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
-          {searchOpen && (
-            <div className="flex items-center border-b border-white/40 bg-black/40 px-2 py-1 backdrop-blur-sm">
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setActive(0);
-                }}
-                placeholder="Filter work..."
-                aria-label="Filter projects"
-                className="w-24 bg-transparent text-xs text-white placeholder:text-white/45 focus:outline-none sm:w-40"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  aria-label="Clear search"
-                  onClick={() => setSearchQuery('')}
-                  className="ml-1 text-white/60 hover:text-white"
-                >
-                  <X size={12} />
-                </button>
-              )}
-            </div>
-          )}
-
-          <button
-            type="button"
-            aria-label={searchOpen ? 'Close search' : 'Search work'}
-            aria-expanded={searchOpen}
-            onClick={() => {
-              setSearchOpen((prev) => {
-                if (prev) setSearchQuery('');
-                return !prev;
-              });
-            }}
-            className="grid h-8 w-8 place-items-center text-white/85 transition hover:text-white"
-          >
-            <Search size={17} strokeWidth={2} />
-          </button>
-
-          <span
-            aria-label="Yuvraj Singh profile"
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/30 bg-gradient-to-br from-[#7c1fff]/85 to-[#1e1b4b] text-[10px] font-bold tracking-wider text-white shadow-sm"
-          >
-            YS
-          </span>
-        </div>
-      </div>
-
-      {/* Featured hero title, metadata, and purple PLAY/EXPLORE CTA */}
+      {/* Featured hero title and metadata */}
       <div className="relative z-20 my-auto max-w-3xl px-5 py-4 sm:px-10 lg:px-14">
         <h2 className="max-w-[14ch] text-[clamp(2rem,4.4vw,3.85rem)] font-extrabold uppercase leading-[0.98] tracking-[-0.02em] text-white drop-shadow-[0_6px_28px_rgba(0,0,0,0.65)]">
           {project.title}
@@ -282,30 +183,6 @@ export function WorkGallery({ onOpenProject }: { onOpenProject: (projectId: stri
           <span className="text-white/80">{project.type}</span>
           <span className="font-semibold text-[#34d399]">{highlightMetric}</span>
           <span className="font-semibold text-white/95">{project.year}</span>
-        </div>
-
-        <div className="mt-5 flex items-center gap-3.5">
-          <button
-            type="button"
-            onClick={() => onOpenProject(project.id)}
-            className="inline-flex h-10 items-center justify-center rounded-full bg-[#7c1fff] px-8 text-[11px] font-bold uppercase tracking-[0.16em] text-white shadow-[0_8px_28px_rgba(124,31,255,0.45)] transition hover:bg-[#8d3aff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-          >
-            EXPLORE
-          </button>
-
-          <button
-            type="button"
-            aria-label={isSaved ? `Remove ${project.title} from saved` : `Save ${project.title}`}
-            aria-pressed={isSaved}
-            onClick={() => toggleSaved(project.id)}
-            className={`grid h-10 w-10 place-items-center rounded-full border transition ${
-              isSaved
-                ? 'border-[#34d399] bg-[#34d399]/15 text-[#34d399]'
-                : 'border-white/65 bg-black/25 text-white hover:border-white hover:bg-white/15'
-            }`}
-          >
-            {isSaved ? <Check size={16} strokeWidth={2.5} /> : <Plus size={18} strokeWidth={2} />}
-          </button>
         </div>
       </div>
 
@@ -335,74 +212,58 @@ export function WorkGallery({ onOpenProject }: { onOpenProject: (projectId: stri
           </div>
         </div>
 
-        {visibleProjects.length > 0 ? (
-          <div
-            ref={railRef}
-            className="flex w-full items-center gap-3 overflow-x-auto overflow-y-hidden pl-5 pr-6 pb-1.5 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4 sm:pl-10 sm:pr-10 lg:pl-14 lg:pr-14"
-          >
-            {visibleProjects.map((item, index) => {
-              const isSelected = index === safeIndex;
-              return (
-                <motion.button
-                  key={item.id}
-                  type="button"
-                  onMouseEnter={() => setActive(index)}
-                  onFocus={() => setActive(index)}
-                  onClick={() => onOpenProject(item.id)}
-                  whileHover={reduceMotion ? undefined : { scale: 1.02 }}
-                  whileTap={reduceMotion ? undefined : { scale: 0.99 }}
-                  transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-                  aria-label={`Explore ${item.title}`}
-                  aria-current={isSelected ? 'true' : undefined}
-                  className={`group relative aspect-[2/3] w-[124px] shrink-0 overflow-hidden rounded-[3px] bg-[#14161d] text-left transition-[opacity,box-shadow] duration-300 sm:w-[146px] lg:w-[164px] xl:w-[174px] ${
-                    isSelected
-                      ? 'opacity-100 ring-2 ring-white shadow-[0_14px_34px_rgba(0,0,0,0.85)]'
-                      : 'opacity-85 hover:opacity-100'
-                  }`}
-                >
-                  <Visual
-                    project={item}
-                    coverKey={item.cardCoverKey}
-                    fill
-                    showWatermark={false}
-                    imagesReady={ready}
-                    className="transition-transform duration-500 group-hover:scale-105"
-                  />
-                  {!item.cardCoverKey && (
-                    <>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/25" />
-                      <span className="absolute left-3 top-3 font-mono text-[9px] tracking-[.2em] text-white/70">
-                        {item.id}
-                      </span>
-                      <div className="absolute inset-x-3 bottom-3.5">
-                        <p className="mb-1 text-[7px] font-semibold uppercase tracking-[.16em] text-white/65">
-                          {item.category}
-                        </p>
-                        <h4 className="line-clamp-3 text-xs font-bold uppercase leading-[1.12] tracking-[0.02em] [word-spacing:0.08em] text-white sm:text-sm">
-                          {item.title}
-                        </h4>
-                      </div>
-                    </>
-                  )}
-                </motion.button>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="px-5 py-8 text-xs text-white/60 sm:px-10 lg:px-14">
-            No matching projects found.{' '}
-            <button
-              type="button"
-              onClick={() => {
-                setActiveCategory('ALL WORK');
-                setSearchQuery('');
-              }}
-              className="underline hover:text-white"
-            >
-              Reset filter
-            </button>
-          </div>
-        )}
+        <div
+          ref={railRef}
+          className="flex w-full items-center gap-3 overflow-x-auto overflow-y-hidden pl-5 pr-6 pb-1.5 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4 sm:pl-10 sm:pr-10 lg:pl-14 lg:pr-14"
+        >
+          {projects.map((item, index) => {
+            const isSelected = index === safeIndex;
+            return (
+              <motion.button
+                key={item.id}
+                type="button"
+                onMouseEnter={() => setActive(index)}
+                onFocus={() => setActive(index)}
+                onClick={() => onOpenProject(item.id)}
+                whileHover={reduceMotion ? undefined : { scale: 1.02 }}
+                whileTap={reduceMotion ? undefined : { scale: 0.99 }}
+                transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                aria-label={`Explore ${item.title}`}
+                aria-current={isSelected ? 'true' : undefined}
+                className={`group relative aspect-[2/3] w-[124px] shrink-0 overflow-hidden rounded-[3px] bg-[#14161d] text-left transition-[opacity,box-shadow] duration-300 sm:w-[146px] lg:w-[164px] xl:w-[174px] ${
+                  isSelected
+                    ? 'opacity-100 ring-2 ring-white shadow-[0_14px_34px_rgba(0,0,0,0.85)]'
+                    : 'opacity-85 hover:opacity-100'
+                }`}
+              >
+                <Visual
+                  project={item}
+                  coverKey={item.cardCoverKey}
+                  fill
+                  showWatermark={false}
+                  imagesReady={ready}
+                  className="transition-transform duration-500 group-hover:scale-105"
+                />
+                {!item.cardCoverKey && (
+                  <>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/25" />
+                    <span className="absolute left-3 top-3 font-mono text-[9px] tracking-[.2em] text-white/70">
+                      {item.id}
+                    </span>
+                    <div className="absolute inset-x-3 bottom-3.5">
+                      <p className="mb-1 text-[7px] font-semibold uppercase tracking-[.16em] text-white/65">
+                        {item.category}
+                      </p>
+                      <h4 className="line-clamp-3 text-xs font-bold uppercase leading-[1.12] tracking-[0.02em] [word-spacing:0.08em] text-white sm:text-sm">
+                        {item.title}
+                      </h4>
+                    </div>
+                  </>
+                )}
+              </motion.button>
+            );
+          })}
+        </div>
       </div>
     </section>
   );

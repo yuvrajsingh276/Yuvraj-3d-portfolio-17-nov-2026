@@ -9,7 +9,6 @@ import type { ToolSpec } from './scene/showcaseLogic';
 import { WorkGallery, ProjectDetailPage } from './components/WorkGallery';
 import { ExperienceAbout } from './components/ExperienceAbout';
 import { MagneticNavLink } from './components/MagneticNavLink';
-import { SectionDotNav } from './components/SectionDotNav';
 import { CustomCursor } from './components/CustomCursor';
 import {
   resolveActiveSection,
@@ -244,28 +243,6 @@ export default function App() {
               >
                 Designing immersive digital experiences through 3D, motion, CGI and interactive technology.
               </motion.p>
-
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.85, delay: 0.34, ease: HERO_EASE }}
-                className="pointer-events-auto mt-4 flex flex-wrap items-center justify-center gap-3.5 sm:mt-5"
-              >
-                <a
-                  href="#work"
-                  onClick={(e) => handleNavClick(e, 'work')}
-                  className="inline-flex min-h-[42px] items-center justify-center rounded-full border border-white/55 bg-[#060d24]/70 px-6 py-2 text-xs font-medium tracking-[0.02em] text-white backdrop-blur-sm transition-all duration-200 hover:border-white hover:bg-white/10 sm:px-7 sm:text-sm"
-                >
-                  View Work
-                </a>
-                <a
-                  href="#about"
-                  onClick={(e) => handleNavClick(e, 'about')}
-                  className="inline-flex min-h-[42px] items-center justify-center rounded-full bg-white px-6 py-2 text-xs font-semibold tracking-[0.02em] text-[#07112b] shadow-[0_0_26px_rgba(255,255,255,0.45)] transition-all duration-200 hover:scale-[1.03] hover:shadow-[0_0_34px_rgba(255,255,255,0.68)] sm:px-7 sm:text-sm"
-                >
-                  {"Let's Talk"}
-                </a>
-              </motion.div>
             </div>
           </motion.section>
         </AnimatePresence>
@@ -384,9 +361,6 @@ export default function App() {
       </header>
 
       {!projectId && <>
-      {/* Persistent right-side dot navigation */}
-      {!projectId && <SectionDotNav activeSection={activeSection} onSelectSection={scrollToSection} />}
-
       {/* Hero viewport spacer before Video section slides up over the fixed hero */}
       {!projectId && <div className="pointer-events-none h-[100svh]" aria-hidden="true" />}
 

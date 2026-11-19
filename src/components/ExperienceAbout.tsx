@@ -109,8 +109,7 @@ export function ExperienceAbout() {
             </div>
           </div>
 
-          <div className="relative z-10 mx-auto mt-6 flex w-full max-w-7xl items-center justify-between pl-5 pr-10 sm:mt-8 sm:px-8 lg:px-12">
-            <span className="portfolio-meta uppercase tracking-[0.2em] text-emerald-100/45">SCROLL TO EXPLORE</span>
+          <div className="relative z-10 mx-auto mt-6 flex w-full max-w-7xl items-center justify-end pl-5 pr-10 sm:mt-8 sm:px-8 lg:px-12">
             <div className="flex items-center gap-2" aria-label={`Experience ${activeIndex + 1} of 3`}>
               {experience.map((item, index) => (
                 <button
