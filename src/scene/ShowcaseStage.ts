@@ -448,7 +448,7 @@ export class ShowcaseStage {
 
             // Smooth Gaussian-like radial feathering across the tube silhouette
             float facing = clamp(abs(dot(normalize(vNormalView), normalize(vViewPos))), 0.0, 1.0);
-            float radialFeather = pow(facing, uEdgePower);
+            float radialFeather = pow(smoothstep(0.015, 0.78, facing), max(0.85, uEdgePower * 0.58));
 
             vec3 luminous = mix(vColor, vec3(0.79, 0.72, 1.0), 0.38 + hoverGlow * 0.48);
             luminous *= (0.98 + shimmer * uPulseGain + hoverGlow * 1.05);
@@ -467,15 +467,15 @@ export class ShowcaseStage {
 
     // Thin, crisp orbital core with richer multi-layer silky feathered glow
     const outerAura = new THREE.Mesh(
-      makeGradientTube(curve, 0.135, 512, true, 12),
-      createOrbitGlowShader(0.26, 0.55, 2.8)
+      makeGradientTube(curve, 0.082, 512, true, 12),
+      createOrbitGlowShader(0.19, 0.48, 2.1)
     );
     const midGlow = new THREE.Mesh(
-      makeGradientTube(curve, 0.036, 640, true, 12),
-      createOrbitGlowShader(0.54, 0.75, 1.95)
+      makeGradientTube(curve, 0.021, 640, true, 12),
+      createOrbitGlowShader(0.34, 0.62, 1.45)
     );
     const core = new THREE.Mesh(
-      makeGradientTube(curve, 0.0062, 768, true, 10),
+      makeGradientTube(curve, 0.0048, 768, true, 10),
       createOrbitGlowShader(1.0, 0.95, 1.1)
     );
     outerAura.renderOrder = -22;
@@ -639,7 +639,7 @@ export class ShowcaseStage {
   }
 
   private initOrbitParticles() {
-    const count = 460;
+    const count = 720;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     this.orbitParticleHoverOffsets = new Float32Array(count * 3);
@@ -658,7 +658,7 @@ export class ShowcaseStage {
       const baseFraction = i / count + (rand() - 0.5) * 0.004;
       const speed = 0.011 + rand() * 0.018;
       // Blend tight core-hugging sparks with a gentle halo band around the orbit
-      const bandSpread = i % 3 === 0 ? 0.52 : 0.24;
+      const bandSpread = i % 3 === 0 ? 0.42 : 0.19;
       const radialOffset: [number, number, number] = [
         (rand() - 0.5) * bandSpread,
         (rand() - 0.5) * bandSpread * 0.72,
@@ -684,10 +684,10 @@ export class ShowcaseStage {
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
     const mat = new THREE.PointsMaterial({
-      size: 0.27,
+      size: 0.145,
       map: this.textures.glowSprite,
       transparent: true,
-      opacity: 0.94,
+      opacity: 0.76,
       vertexColors: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
