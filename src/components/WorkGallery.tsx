@@ -132,7 +132,7 @@ export function WorkGallery() {
         onPointerCancel={onPointerUp}
         className={`relative z-10 flex min-h-0 flex-1 touch-pan-y select-none items-center justify-center overflow-hidden outline-none ${dragStart !== null ? 'cursor-grabbing' : 'cursor-grab'}`}
       >
-        <div className="relative h-[min(58svh,440px)] w-full" style={{ perspective: '1500px', transformStyle: 'preserve-3d' }}>
+        <div className="relative h-[min(58svh,440px)] w-full" style={{ perspective: '1600px', transformStyle: 'preserve-3d' }}>
           {projects.map((project, index) => {
             let relative = index - active;
             if (relative > projects.length / 2) relative -= projects.length;
@@ -145,8 +145,8 @@ export function WorkGallery() {
               width: 'min(66vw, 540px)', height: '100%', maxHeight: 440,
               borderRadius: 18, overflow: 'hidden',
               transformStyle: 'preserve-3d',
-              transform: `translate(-50%,-50%) translateX(${relative * 68}%) translateZ(${-distance * 180}px) rotateY(${-relative * 13}deg) rotateZ(${relative * 1.2}deg) scale(${1 - distance * .16})`,
-              opacity: visible ? (activeCard ? 1 : .56) : 0,
+              transform: `translate(-50%,-50%) translateX(${relative * 240}px) translateZ(${-distance * 240}px) rotateY(${-relative * 7}deg) rotateZ(${relative * 7}deg) scale(${Math.max(0.4, 1 - distance * 0.16)})`,
+              opacity: visible ? (activeCard ? 1 : 0.6) : 0,
               zIndex: 10 - distance,
               pointerEvents: visible ? 'auto' : 'none',
               transition: reduceMotion ? 'none' : 'transform .65s cubic-bezier(.22,1,.36,1),opacity .65s ease',
