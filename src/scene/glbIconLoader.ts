@@ -134,6 +134,7 @@ function normalizeModelGroup(
 
 function buildGlbIconEntry(
   spec: ToolSpec,
+  instanceId: string,
   sourceNode: THREE.Object3D,
   isSoftwareGl: boolean,
   sharedHitGeo: THREE.SphereGeometry
@@ -144,13 +145,9 @@ function buildGlbIconEntry(
 
   const glowTargets: BuiltIconEntry['glowTargets'] = [];
   const cloned = cloneNodeWithUniqueMaterials(sourceNode, isSoftwareGl, glowTargets);
-  let hash = 0;
-  for (let i = 0; i < spec.id.length; i++) {
-    hash = (hash * 31 + spec.id.charCodeAt(i)) % 1000;
-  }
-  const sizeFactor = 0.85 + (hash / 1000) * 0.3;
-  const baseTargetDim = 1.44 * 0.8; // 20% smaller
-  const normalizedGroup = normalizeModelGroup(cloned, baseTargetDim * sizeFactor);
+  // Uniform base dimension (+20%); per-instance 50%-100% random scaling is applied in ShowcaseStage
+  const baseTargetDim = 0.922;
+  const normalizedGroup = normalizeModelGroup(cloned, baseTargetDim);
   bodyGroup.add(normalizedGroup);
 
   const hitMat = new THREE.MeshBasicMaterial({
@@ -160,10 +157,12 @@ function buildGlbIconEntry(
   });
   const hitProxy = new THREE.Mesh(sharedHitGeo, hitMat);
   hitProxy.userData.toolId = spec.id;
+  hitProxy.userData.instanceId = instanceId;
   bodyGroup.add(hitProxy);
 
   return {
     spec,
+    instanceId,
     anchorGroup,
     bodyGroup,
     hitProxy,
@@ -228,7 +227,7 @@ export async function loadGlbShowcaseAssets(
 
   try {
     const gltf = await loader.loadAsync(modelUrl);
-    const sharedHitGeo = new THREE.SphereGeometry(0.95, 14, 12);
+    const sharedHitGeo = new THREE.SphereGeometry(0.74, 14, 12);
 
     const icons: BuiltIconEntry[] = [];
     for (const spec of TOOLS_CATALOG) {
@@ -236,7 +235,8 @@ export async function loadGlbShowcaseAssets(
       if (!node) {
         throw new Error(`Missing icon node "${spec.glbNodeName}" in ${modelUrl}`);
       }
-      icons.push(buildGlbIconEntry(spec, node, isSoftwareGl, sharedHitGeo));
+      icons.push(buildGlbIconEntry(spec, spec.id, node, isSoftwareGl, sharedHitGeo));
+      icons.push(buildGlbIconEntry(spec, `${spec.id}__dup`, node, isSoftwareGl, sharedHitGeo));
     }
 
     const propSlots = computeDecorativePropsLayout(initialAspect);

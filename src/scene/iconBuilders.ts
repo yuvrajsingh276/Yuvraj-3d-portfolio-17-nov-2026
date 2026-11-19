@@ -19,6 +19,8 @@ import type { ToolSpec } from './showcaseLogic';
 
 export interface BuiltIconEntry {
   spec: ToolSpec;
+  /** Unique orbital instance identifier (e.g. 'chatgpt' or 'chatgpt__dup') */
+  instanceId?: string;
   /** Outer anchor group positioned on the orbital ring */
   anchorGroup: THREE.Group;
   /** Inner animated group that floats, rotates, and pulls forward along Z on hover */

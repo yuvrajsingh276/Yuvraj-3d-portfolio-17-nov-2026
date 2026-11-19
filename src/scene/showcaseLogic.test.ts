@@ -39,6 +39,10 @@ import {
   CAMERA_BLENDER_VIEW,
   ORBIT_NORMAL_SPEED_DEG_PER_SEC,
   ORBIT_HOVER_SLOW_SPEED_DEG_PER_SEC,
+  ICON_MIN_RANDOM_SCALE,
+  ICON_MAX_RANDOM_SCALE,
+  generateOrbitalInstanceSizes,
+  computeEarthOrbitWithDuplicates,
 } from './showcaseLogic';
 
 test('catalog contains all required core creative and AI tools with unique IDs, GLB nodes, and roles', () => {
@@ -546,5 +550,72 @@ test('star sparkles connect strictly on concentric rings and camera-ray depth pr
     }
   }
 });
+
+test('orbital instance size generator assigns 50%-100% scales with distinct duplicate sizes', () => {
+  let seed = 4242;
+  const rng = () => {
+    seed = (seed * 16807) % 2147483647;
+    return (seed - 1) / 2147483646;
+  };
+  const sizes = generateOrbitalInstanceSizes(TOOLS_CATALOG, rng);
+  assert.equal(Object.keys(sizes).length, TOOLS_CATALOG.length * 2);
+
+  const uniqueVals = new Set<number>();
+  for (const tool of TOOLS_CATALOG) {
+    const primary = sizes[tool.id];
+    const dup = sizes[`${tool.id}__dup`];
+    assert.ok(
+      primary >= ICON_MIN_RANDOM_SCALE && primary <= ICON_MAX_RANDOM_SCALE,
+      `Primary scale for ${tool.id} out of [0.5, 1.0]: ${primary}`
+    );
+    assert.ok(
+      dup >= ICON_MIN_RANDOM_SCALE && dup <= ICON_MAX_RANDOM_SCALE,
+      `Duplicate scale for ${tool.id} out of [0.5, 1.0]: ${dup}`
+    );
+    assert.ok(
+      Math.abs(primary - dup) >= 0.12,
+      `Expected distinct duplicate scale for ${tool.id}: primary=${primary} dup=${dup}`
+    );
+    uniqueVals.add(primary);
+    uniqueVals.add(dup);
+  }
+  assert.ok(uniqueVals.size >= 8, `Expected varied randomized sizes, got only ${uniqueVals.size} unique values`);
+});
+
+test('antipodal duplicate orbital layout shows at most one copy of every tool at any angle and preserves safe separation', () => {
+  const sizes = generateOrbitalInstanceSizes(TOOLS_CATALOG);
+  for (const aspect of [1.6, 0.46]) {
+    for (let angle = 0; angle < 360; angle += 5) {
+      const slots = computeEarthOrbitWithDuplicates(TOOLS_CATALOG, aspect, angle, sizes);
+      assert.equal(slots.length, TOOLS_CATALOG.length * 2);
+
+      const visibleCountByTool = new Map<string, number>();
+      for (const slot of slots) {
+        assert.ok(
+          slot.randomSizeScale >= ICON_MIN_RANDOM_SCALE && slot.randomSizeScale <= ICON_MAX_RANDOM_SCALE,
+          `Slot ${slot.instanceId} scale out of bounds: ${slot.randomSizeScale}`
+        );
+        if (slot.isVisibleInSky) {
+          visibleCountByTool.set(slot.toolId, (visibleCountByTool.get(slot.toolId) ?? 0) + 1);
+        }
+      }
+
+      for (const tool of TOOLS_CATALOG) {
+        const count = visibleCountByTool.get(tool.id) ?? 0;
+        assert.ok(
+          count <= 1,
+          `Tool ${tool.id} had ${count} visible instances simultaneously at aspect=${aspect} angle=${angle}`
+        );
+      }
+
+      const minDist = computeMinPairwiseDistance(slots);
+      assert.ok(
+        minDist >= 1.85,
+        `Expected safe separation >= 1.85 across all 20 instances at aspect=${aspect} angle=${angle}, got ${minDist.toFixed(2)}`
+      );
+    }
+  }
+});
+
 
 

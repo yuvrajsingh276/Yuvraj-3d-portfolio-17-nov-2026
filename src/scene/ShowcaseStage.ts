@@ -26,9 +26,9 @@ import {
   computeDofConfig,
   getEarthOrbitConfig,
   sampleEarthRingPoint,
-  computeEarthConcentricLayout,
+  computeEarthOrbitWithDuplicates,
+  generateOrbitalInstanceSizes,
   alignOrbitalPointToDepthZ,
-  EARTH_SPARKLE_SPECS,
   computeParticleHoverDisplacement,
   computeOrbitAutoScrollSpeed,
   clampHoverTooltipPosition,
@@ -36,7 +36,7 @@ import {
   type LightingPresetId,
   type ToolSpec,
   type DepthLayer,
-  type OrbitalSlot,
+  type OrbitalInstanceSlot,
   type HoverKinematicsState,
   type MagneticRotationState,
   type IconScatterState,
@@ -156,19 +156,23 @@ export class ShowcaseStage {
   private dragMoved = false;
   private dragTilt = { x: 0, y: 0 };
 
+  private hoveredInstanceId: string | null = null;
   private hoveredToolId: string | null = null;
   private selectedToolId: string | null = null;
   private motionPaused = false;
   private autoOrbit = false;
   private reducedMotion = false;
-  private bloomIntensity = 0;
+  private bloomIntensity = 0.22;
   private dofStrength = 0;
   private currentFocusWorldZ = 0.35;
   private hadHoverAnchor = false;
   private orbitParticleTime = 0;
   private iconHalos = new Map<string, THREE.Sprite>();
-  private iconPointLights = new Map<string, THREE.PointLight>();
-  private iconDepthMeta = new Map<string, { depthLayer: DepthLayer; depthScale: number }>();
+  private iconDepthMeta = new Map<
+    string,
+    { depthLayer: DepthLayer; depthScale: number; randomSizeScale: number; isVisibleInSky: boolean }
+  >();
+  private instanceSizeScales: Record<string, number> = generateOrbitalInstanceSizes(TOOLS_CATALOG);
 
   private frameId = 0;
   private lastTimeMs = 0;
@@ -410,8 +414,8 @@ export class ShowcaseStage {
 
     const cfg = getEarthOrbitConfig(aspect);
     const isPortrait = aspect < 0.85;
-    const halfWidth = isPortrait ? 0.056 : 0.032;
-    const lineOpacities = [0.46, 0.42, 0.38, 0.34, 0.3];
+    const halfWidth = isPortrait ? 0.022 : 0.0115;
+    const lineOpacities = [0.36, 0.33, 0.29, 0.25, 0.22];
 
     cfg.ringRadii.forEach((radius, ringIndex) => {
       const ringZ = -0.35 + ringIndex * 0.16;
@@ -419,7 +423,7 @@ export class ShowcaseStage {
       const mat = new THREE.ShaderMaterial({
         uniforms: {
           uTime: { value: 0 },
-          uBaseOpacity: { value: lineOpacities[ringIndex] ?? 0.32 },
+          uBaseOpacity: { value: lineOpacities[ringIndex] ?? 0.24 },
           uRadius: { value: radius },
           uHalfW: { value: halfWidth },
           uPointerPos: { value: new THREE.Vector3() },
@@ -443,15 +447,15 @@ export class ShowcaseStage {
           void main() {
             float angle = atan(vLocalPos.y, vLocalPos.x);
             float radialDist = abs(length(vLocalPos.xy) - uRadius);
-            float aa = smoothstep(uHalfW, uHalfW * 0.18, radialDist);
+            float aa = smoothstep(uHalfW, uHalfW * 0.12, radialDist);
             // Bright along upper celestial sky arc and gently tapering into dark horizon corners
-            float skyFade = smoothstep(-0.22, 0.24, sin(angle));
+            float skyFade = smoothstep(-0.18, 0.24, sin(angle));
             float shimmer = 0.92 + 0.08 * sin(angle * 3.0 - uTime * 0.7);
             float dPtr = distance(vec3(vLocalPos.xy, 0.0), vec3(uPointerPos.xy, 0.0));
             float hoverLift = smoothstep(3.6, 0.0, dPtr) * uPointerActive * 0.35;
 
             vec3 lineColor = mix(vec3(0.76, 0.80, 0.98), vec3(0.95, 0.92, 1.0), hoverLift);
-            float alpha = clamp((uBaseOpacity * skyFade * shimmer + hoverLift * 0.3) * aa, 0.0, 0.92);
+            float alpha = clamp((uBaseOpacity * skyFade * shimmer + hoverLift * 0.28) * aa, 0.0, 0.88);
             if (alpha < 0.01) discard;
             gl_FragColor = vec4(lineColor, alpha);
           }
@@ -517,22 +521,24 @@ export class ShowcaseStage {
       }
 
       this.glbAssets = assets;
-      const slots = computeEarthConcentricLayout(
+      const slots = computeEarthOrbitWithDuplicates(
         TOOLS_CATALOG,
         this.currentAspect,
-        this.magneticRotation.angleDeg
+        this.magneticRotation.angleDeg,
+        this.instanceSizeScales
       );
       this.lastAppliedAngleDeg = this.magneticRotation.angleDeg;
 
       for (let i = 0; i < assets.icons.length; i++) {
         const built = assets.icons[i];
-        this.attachIconHalo(built);
+        const instId = built.instanceId ?? built.spec.id;
+        this.attachIconHalo(built, instId);
 
         this.constellationGroup.add(built.anchorGroup);
         this.icons.push(built);
         this.hitProxies.push(built.hitProxy);
-        this.hoverStates.set(built.spec.id, { zPull: 0, scale: 1.0, glowBoost: 0 });
-        this.scatterStates.set(built.spec.id, createIdleScatterState(2.0));
+        this.hoverStates.set(instId, { zPull: 0, scale: 1.0, glowBoost: 0 });
+        this.scatterStates.set(instId, createIdleScatterState(2.0));
       }
       this.applyIconSlots(slots);
 
@@ -562,30 +568,42 @@ export class ShowcaseStage {
     const aspect =
       Math.max(1, this.container.clientWidth) / Math.max(1, this.container.clientHeight);
     this.currentAspect = aspect;
-    const slots = computeEarthConcentricLayout(TOOLS_CATALOG, aspect, this.magneticRotation.angleDeg);
+    const slots = computeEarthOrbitWithDuplicates(
+      TOOLS_CATALOG,
+      aspect,
+      this.magneticRotation.angleDeg,
+      this.instanceSizeScales
+    );
     this.lastAppliedAngleDeg = this.magneticRotation.angleDeg;
 
     for (let i = 0; i < TOOLS_CATALOG.length; i++) {
       const spec = TOOLS_CATALOG[i];
-      const built = buildToolIcon(spec, this.textures);
-      this.attachIconHalo(built);
+      for (const isDup of [false, true]) {
+        const instId = isDup ? `${spec.id}__dup` : spec.id;
+        const built = buildToolIcon(spec, this.textures);
+        built.instanceId = instId;
+        built.hitProxy.userData.instanceId = instId;
+        this.attachIconHalo(built, instId);
 
-      this.constellationGroup.add(built.anchorGroup);
-      this.icons.push(built);
-      this.hitProxies.push(built.hitProxy);
-      this.hoverStates.set(spec.id, { zPull: 0, scale: 1.0, glowBoost: 0 });
-      this.scatterStates.set(spec.id, createIdleScatterState(2.0));
+        this.constellationGroup.add(built.anchorGroup);
+        this.icons.push(built);
+        this.hitProxies.push(built.hitProxy);
+        this.hoverStates.set(instId, { zPull: 0, scale: 1.0, glowBoost: 0 });
+        this.scatterStates.set(instId, createIdleScatterState(2.0));
+      }
     }
     this.applyIconSlots(slots);
   }
 
-  private applyIconSlots(slots: OrbitalSlot[]) {
+  private applyIconSlots(slots: OrbitalInstanceSlot[]) {
     const earthCfg = getEarthOrbitConfig(this.currentAspect);
     const camPosZ = this.camera.position.z;
 
     for (let i = 0; i < this.icons.length; i++) {
       const slot = slots[i];
       if (!slot) continue;
+      const entry = this.icons[i];
+      const instId = entry.instanceId ?? entry.spec.id;
       const ringIdx = slot.ringIndex ?? 0;
       const ringZ = -0.35 + ringIdx * 0.16;
       const [ax, ay, az] = alignOrbitalPointToDepthZ(
@@ -597,41 +615,41 @@ export class ShowcaseStage {
         camPosZ,
         CAMERA_BLENDER_VIEW.position[1]
       );
-      this.icons[i].anchorGroup.position.set(ax, ay, az);
-      this.icons[i].anchorGroup.rotation.set(
+      entry.anchorGroup.position.set(ax, ay, az);
+      entry.anchorGroup.rotation.set(
         slot.baseRotationX,
         slot.baseRotationY,
         slot.baseRotationZ
       );
-      this.iconDepthMeta.set(this.icons[i].spec.id, {
+      // Enforce strict single-visible-instance rule: only upper sky copy is visible at any moment
+      entry.anchorGroup.visible = slot.isVisibleInSky;
+      this.iconDepthMeta.set(instId, {
         depthLayer: slot.depthLayer ?? 'mid',
         depthScale: slot.depthScale ?? 0.9,
+        randomSizeScale: slot.randomSizeScale,
+        isVisibleInSky: slot.isVisibleInSky,
       });
     }
   }
 
-  private attachIconHalo(entry: BuiltIconEntry) {
-    // Small, local accent light makes each icon catch light at its own position.
-    const localLight = new THREE.PointLight(entry.spec.accentHex, 2.2, 3.6, 2);
-    localLight.position.set(0, 0, 0.32);
-    entry.bodyGroup.add(localLight);
-    this.iconPointLights.set(entry.spec.id, localLight);
-
+  private attachIconHalo(entry: BuiltIconEntry, instanceId: string) {
+    const sizeScale = this.instanceSizeScales[instanceId] ?? 0.78;
     const haloMat = new THREE.SpriteMaterial({
       map: this.textures.glowSprite,
       color: entry.spec.accentHex,
       transparent: true,
-      opacity: 0.32,
+      opacity: 0.3,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       depthTest: false,
     });
     const sprite = new THREE.Sprite(haloMat);
-    sprite.scale.set(2.55, 2.55, 1);
+    const haloSize = 1.87 * (0.65 + sizeScale * 0.45);
+    sprite.scale.set(haloSize, haloSize, 1);
     sprite.position.set(0, 0, -0.18);
     sprite.visible = true;
     entry.bodyGroup.add(sprite);
-    this.iconHalos.set(entry.spec.id, sprite);
+    this.iconHalos.set(instanceId, sprite);
   }
 
   private initOrbitParticles() {
@@ -697,11 +715,11 @@ export class ShowcaseStage {
   }
 
   private initParticles() {
-    const count = 360;
+    const count = 620;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
 
-    // Deterministic seeded distribution for crisp stardust field
+    // Deterministic seeded distribution for lush drifting cosmic sky stardust
     let seed = 4242;
     const rand = () => {
       seed = (seed * 16807) % 2147483647;
@@ -709,20 +727,19 @@ export class ShowcaseStage {
     };
 
     const palette = [
-      new THREE.Color('#60a5fa'),
-      new THREE.Color('#c084fc'),
-      new THREE.Color('#34d399'),
-      new THREE.Color('#fbbf24'),
+      new THREE.Color('#ffffff'),
+      new THREE.Color('#93c5fd'),
+      new THREE.Color('#c4b5fd'),
       new THREE.Color('#e2e8f0'),
+      new THREE.Color('#fde68a'),
     ];
 
     for (let i = 0; i < count; i++) {
-      const r = 2.6 + rand() * 9.5;
-      const theta = rand() * Math.PI * 2;
-      const y = (rand() - 0.5) * 7.8;
+      const spreadX = (rand() - 0.5) * 26;
+      const spreadY = 0.5 + rand() * 14.5;
 
-      positions[i * 3] = Math.cos(theta) * r;
-      positions[i * 3 + 1] = y;
+      positions[i * 3] = spreadX;
+      positions[i * 3 + 1] = spreadY;
       // Seed particles throughout real camera depth, from far background to foreground.
       positions[i * 3 + 2] = -20 + rand() * 32;
 
@@ -735,16 +752,16 @@ export class ShowcaseStage {
     this.dustBasePositions = new Float32Array(positions);
     this.dustHoverOffsets = new Float32Array(count * 3);
     this.dustVelocities = new Float32Array(count);
-    for (let i = 0; i < count; i++) this.dustVelocities[i] = 1.4 + rand() * 1.5;
+    for (let i = 0; i < count; i++) this.dustVelocities[i] = 1.6 + rand() * 1.9;
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
     const mat = new THREE.PointsMaterial({
-      size: 0.11,
+      size: 0.115,
       map: this.textures.particleSprite,
       transparent: true,
-      opacity: 0.44,
+      opacity: 0.52,
       vertexColors: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
@@ -804,8 +821,9 @@ export class ShowcaseStage {
     if (!this.heroVisible || this.isDraggingScene) return;
     if (e.target !== this.renderer.domElement) {
       this.pointerNdc.set(99, 99);
-      if (this.hoveredToolId !== null) {
+      if (this.hoveredToolId !== null || this.hoveredInstanceId !== null) {
         this.hoveredToolId = null;
+        this.hoveredInstanceId = null;
         this.renderer.domElement.style.cursor = this.selectedToolId ? 'default' : 'grab';
         if (this.hadHoverAnchor) {
           this.hadHoverAnchor = false;
@@ -901,7 +919,12 @@ export class ShowcaseStage {
     );
     this.controls.update();
 
-    const slots = computeEarthConcentricLayout(TOOLS_CATALOG, aspect, this.magneticRotation.angleDeg);
+    const slots = computeEarthOrbitWithDuplicates(
+      TOOLS_CATALOG,
+      aspect,
+      this.magneticRotation.angleDeg,
+      this.instanceSizeScales
+    );
     this.lastAppliedAngleDeg = this.magneticRotation.angleDeg;
     this.rebuildOrbitalGuideRing(aspect, this.magneticRotation.angleDeg);
     this.applyIconSlots(slots);
@@ -947,11 +970,17 @@ export class ShowcaseStage {
     this.pointerSpeed = Math.min(1, this.pointerSpeed + Math.hypot(dx, dy) * 8.5);
   }
 
-  private performRaycast(): string | null {
+  private performRaycast(): { instanceId: string; toolId: string } | null {
     this.raycaster.setFromCamera(this.pointerNdc, this.camera);
-    const hits = this.raycaster.intersectObjects(this.hitProxies, false);
+    const visibleProxies = this.hitProxies.filter((proxy) => {
+      const parentAnchor = proxy.parent?.parent;
+      return parentAnchor ? parentAnchor.visible : true;
+    });
+    const hits = this.raycaster.intersectObjects(visibleProxies, false);
     if (hits.length > 0) {
-      return (hits[0].object.userData.toolId as string) || null;
+      const toolId = (hits[0].object.userData.toolId as string) || '';
+      const instanceId = (hits[0].object.userData.instanceId as string) || toolId;
+      if (toolId) return { instanceId, toolId };
     }
     return null;
   }
@@ -965,8 +994,10 @@ export class ShowcaseStage {
     const height = Math.max(1, this.container.clientHeight);
     const rawX = (_vec3A.x * 0.5 + 0.5) * width;
     const rawY = (-_vec3A.y * 0.5 + 0.5) * height;
-    const depthScale = this.iconDepthMeta.get(entry.spec.id)?.depthScale ?? 0.9;
-    const labelLift = 44 + depthScale * 24;
+    const instId = entry.instanceId ?? entry.spec.id;
+    const meta = this.iconDepthMeta.get(instId);
+    const depthScale = (meta?.depthScale ?? 0.9) * (meta?.randomSizeScale ?? 0.8);
+    const labelLift = 36 + depthScale * 24;
     return clampHoverTooltipPosition(rawX, rawY - labelLift, width, height);
   }
 
@@ -976,13 +1007,16 @@ export class ShowcaseStage {
     if (!force && now - this.lastRaycastMs < 48) return;
     this.lastRaycastMs = now;
 
-    const hitId = this.performRaycast();
-    if (hitId !== this.hoveredToolId) {
-      this.hoveredToolId = hitId;
-      this.renderer.domElement.style.cursor = hitId ? 'pointer' : 'grab';
-      const spec = hitId ? TOOLS_CATALOG.find((t) => t.id === hitId) ?? null : null;
-      if (hitId) {
-        const entry = this.icons.find((ic) => ic.spec.id === hitId);
+    const hit = this.performRaycast();
+    const hitInstanceId = hit?.instanceId ?? null;
+    const hitToolId = hit?.toolId ?? null;
+    if (hitInstanceId !== this.hoveredInstanceId) {
+      this.hoveredInstanceId = hitInstanceId;
+      this.hoveredToolId = hitToolId;
+      this.renderer.domElement.style.cursor = hitInstanceId ? 'pointer' : 'grab';
+      const spec = hitToolId ? TOOLS_CATALOG.find((t) => t.id === hitToolId) ?? null : null;
+      if (hitInstanceId) {
+        const entry = this.icons.find((ic) => (ic.instanceId ?? ic.spec.id) === hitInstanceId);
         if (entry) {
           this.hadHoverAnchor = true;
           this.callbacks.onHoverAnchorChange?.(this.computeEntryScreenAnchor(entry));
@@ -1015,8 +1049,9 @@ export class ShowcaseStage {
       );
       if (totalDist >= 5) {
         this.dragMoved = true;
-        if (this.hoveredToolId !== null) {
+        if (this.hoveredToolId !== null || this.hoveredInstanceId !== null) {
           this.hoveredToolId = null;
+          this.hoveredInstanceId = null;
           this.callbacks.onHoverChange?.(null);
         }
       }
@@ -1064,9 +1099,9 @@ export class ShowcaseStage {
 
     // Treat as click only if pointer didn't drag
     if (dist < 6 && !this.dragMoved) {
-      const hitId = this.performRaycast();
-      if (hitId) {
-        this.focusTool(hitId);
+      const hit = this.performRaycast();
+      if (hit) {
+        this.focusTool(hit.instanceId);
       } else if (this.selectedToolId) {
         this.resetView();
       }
@@ -1082,8 +1117,9 @@ export class ShowcaseStage {
     this.pointerNorm.x = 0;
     this.pointerNorm.y = 0;
     this.targetPointerActive = 0;
-    if (this.hoveredToolId !== null) {
+    if (this.hoveredToolId !== null || this.hoveredInstanceId !== null) {
       this.hoveredToolId = null;
+      this.hoveredInstanceId = null;
       this.callbacks.onHoverChange?.(null);
     }
     if (this.hadHoverAnchor) {
@@ -1159,19 +1195,22 @@ export class ShowcaseStage {
     this.controls.autoRotate = false;
   }
 
-  public focusTool(toolId: string | null) {
-    if (!toolId) {
+  public focusTool(instanceOrToolId: string | null) {
+    if (!instanceOrToolId) {
       this.resetView();
       return;
     }
-    const entry = this.icons.find((ic) => ic.spec.id === toolId);
+    const entry =
+      this.icons.find((ic) => (ic.instanceId ?? ic.spec.id) === instanceOrToolId) ??
+      this.icons.find((ic) => ic.spec.id === instanceOrToolId && ic.anchorGroup.visible);
     if (!entry) return;
 
+    const instId = entry.instanceId ?? entry.spec.id;
     // Trigger slow, smooth individual 3D scatter that holds & returns after 2 seconds
     const cp = entry.anchorGroup.position;
-    const prevScatter = this.scatterStates.get(entry.spec.id) ?? createIdleScatterState(2.0);
+    const prevScatter = this.scatterStates.get(instId) ?? createIdleScatterState(2.0);
     this.scatterStates.set(
-      entry.spec.id,
+      instId,
       triggerScatterState(prevScatter, [cp.x, cp.y, cp.z], this.clickCount++, 2.0)
     );
 
@@ -1403,10 +1442,11 @@ export class ShowcaseStage {
     );
     if (Math.abs(this.magneticRotation.angleDeg - this.lastAppliedAngleDeg) > 1e-4) {
       this.lastAppliedAngleDeg = this.magneticRotation.angleDeg;
-      const slots = computeEarthConcentricLayout(
+      const slots = computeEarthOrbitWithDuplicates(
         TOOLS_CATALOG,
         this.currentAspect,
-        this.magneticRotation.angleDeg
+        this.magneticRotation.angleDeg,
+        this.instanceSizeScales
       );
       this.applyIconSlots(slots);
     }
@@ -1423,29 +1463,29 @@ export class ShowcaseStage {
       this.constellationGroup.rotation.x = -this.smoothedParallax.y * 0.045 + this.dragTilt.x;
     }
 
-    // 3. Per-icon floating, slow 2s scatter/return, uniform perspective size, and interactive hover tilt
+    // 3. Per-icon floating, slow 2s scatter/return, 50%-100% random size, and interactive hover tilt
     let activeGlowTarget: BuiltIconEntry | null = null;
     const bloomCfg = computeBloomConfig(this.bloomIntensity);
     const camDist = this.camera.position.z;
 
     for (let i = 0; i < this.icons.length; i++) {
       const entry = this.icons[i];
-      const id = entry.spec.id;
-      const isHovered = this.hoveredToolId === id;
+      const instId = entry.instanceId ?? entry.spec.id;
+      const isHovered = this.hoveredInstanceId === instId;
 
-      if (isHovered) {
+      if (isHovered && entry.anchorGroup.visible) {
         activeGlowTarget = entry;
       }
 
-      const prevState = this.hoverStates.get(id)!;
+      const prevState = this.hoverStates.get(instId)!;
       const nextState = stepHoverKinematics(prevState, isHovered, false, dt, false);
-      this.hoverStates.set(id, nextState);
+      this.hoverStates.set(instId, nextState);
 
-      const prevScatter = this.scatterStates.get(id) ?? createIdleScatterState(2.0);
+      const prevScatter = this.scatterStates.get(instId) ?? createIdleScatterState(2.0);
       const nextScatter = stepIconScatterState(prevScatter, dt);
-      this.scatterStates.set(id, nextScatter);
+      this.scatterStates.set(instId, nextScatter);
 
-      const floatY = this.reducedMotion ? 0 : Math.sin(t * 1.05 + entry.spec.phase) * 0.035;
+      const floatY = this.reducedMotion ? 0 : Math.sin(t * 1.05 + entry.spec.phase + i * 0.37) * 0.035;
       const swayY = this.reducedMotion ? 0 : Math.sin(t * 0.6 + entry.spec.phase * 1.3) * 0.07;
       const swayX = this.reducedMotion ? 0 : Math.cos(t * 0.5 + entry.spec.phase) * 0.035;
 
@@ -1464,14 +1504,23 @@ export class ShowcaseStage {
         nextScatter.rotKick[2]
       );
 
-      // Apply front/mid/back depth hierarchy alongside perspective normalization
+      // Apply perspective normalization + depth hierarchy + 50%-100% random per-instance size
       const uniformPerspectiveScale = computeUniformScreenScaleFactor(
         camDist,
         entry.anchorGroup.position.z
       );
-      const depthMeta = this.iconDepthMeta.get(id) ?? { depthLayer: 'mid', depthScale: 0.9 };
+      const depthMeta = this.iconDepthMeta.get(instId) ?? {
+        depthLayer: 'mid' as DepthLayer,
+        depthScale: 0.9,
+        randomSizeScale: this.instanceSizeScales[instId] ?? 0.78,
+        isVisibleInSky: true,
+      };
       entry.bodyGroup.scale.setScalar(
-        entry.spec.baseScale * uniformPerspectiveScale * depthMeta.depthScale * nextState.scale
+        entry.spec.baseScale *
+          uniformPerspectiveScale *
+          depthMeta.depthScale *
+          depthMeta.randomSizeScale *
+          nextState.scale
       );
 
       if (entry.spinSubGroup && !this.reducedMotion) {
@@ -1479,16 +1528,9 @@ export class ShowcaseStage {
       }
 
       const depthEmissiveMult =
-        depthMeta.depthLayer === 'front' ? 1.12 : depthMeta.depthLayer === 'back' ? 0.5 : 0.88;
-      const depthLightTarget =
-        depthMeta.depthLayer === 'front' ? 2.9 : depthMeta.depthLayer === 'back' ? 0.65 : 1.85;
+        depthMeta.depthLayer === 'front' ? 1.12 : depthMeta.depthLayer === 'back' ? 0.58 : 0.9;
       const depthHaloBase =
-        depthMeta.depthLayer === 'front' ? 0.42 : depthMeta.depthLayer === 'back' ? 0.1 : 0.24;
-
-      const localLight = this.iconPointLights.get(id);
-      if (localLight) {
-        localLight.intensity = depthLightTarget + Math.max(0, nextState.glowBoost) * 0.9;
-      }
+        depthMeta.depthLayer === 'front' ? 0.36 : depthMeta.depthLayer === 'back' ? 0.1 : 0.22;
 
       // Calibrated emissive modulation: white icon faces stay strictly unclipped
       for (let g = 0; g < entry.glowTargets.length; g++) {
@@ -1504,7 +1546,7 @@ export class ShowcaseStage {
         }
       }
 
-      const halo = this.iconHalos.get(id);
+      const halo = this.iconHalos.get(instId);
       if (halo) {
         halo.material.opacity = depthHaloBase + Math.max(0, nextState.glowBoost) * 0.22;
         halo.visible = true;

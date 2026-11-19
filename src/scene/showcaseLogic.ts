@@ -65,15 +65,15 @@ export const LIGHTING_PRESETS: Record<LightingPresetId, LightingPreset> = {
     fogHex: '#0b0a1f',
     fogDensity: 0.014,
     keyColor: '#f4eeff',
-    keyIntensity: 1.25,
+    keyIntensity: 1.65,
     hemiSkyColor: '#8b7cf6',
     hemiGroundColor: '#0c0b22',
-    hemiIntensity: 0.82,
+    hemiIntensity: 1.02,
     rimColor: '#a78bfa',
-    rimIntensity: 1.45,
+    rimIntensity: 1.65,
     accentColor: '#a78bfa',
     coreColor: '#7c3aed',
-    exposure: 0.9,
+    exposure: 0.92,
     breathCycleSec: 8.5,
     rimPulseAmount: 0.09,
     hemiPulseAmount: 0.04,
@@ -304,8 +304,8 @@ export const TOOLS_CATALOG: readonly ToolSpec[] = [
 ];
 
 export const CAMERA_BLENDER_VIEW = {
-  position: [0.2468845, 6.214279, 25.984135] as const,
-  target: [0.2468845, 6.214279, 0] as const,
+  position: [0.2468845, 6.82, 25.984135] as const,
+  target: [0.2468845, 6.82, 0] as const,
   fov: 27.1075267,
   aspect: 1.7777777777777777,
 };
@@ -416,16 +416,16 @@ export const EARTH_SPARKLE_SPECS: readonly EarthSparkleSpec[] = [
 ];
 
 export const EARTH_ICON_ASSIGNMENTS: Record<string, EarthIconAssignment> = {
-  dreamweaver: { ringIndex: 0, desktopThetaDeg: 164.0, mobileThetaDeg: 164.0, depthLayer: 'front', depthScale: 1.05, zOffset: 0.65 },
-  illustrator: { ringIndex: 0, desktopThetaDeg: 339.5, mobileThetaDeg: 339.5, depthLayer: 'back', depthScale: 0.85, zOffset: 0.28 },
-  photoshop: { ringIndex: 1, desktopThetaDeg: 90.3, mobileThetaDeg: 90.3, depthLayer: 'front', depthScale: 1.15, zOffset: 0.16 },
-  claude: { ringIndex: 2, desktopThetaDeg: 12.7, mobileThetaDeg: 12.7, depthLayer: 'mid', depthScale: 0.95, zOffset: 0.65 },
-  'after-effects': { ringIndex: 3, desktopThetaDeg: 120.5, mobileThetaDeg: 120.5, depthLayer: 'mid', depthScale: 1.0, zOffset: 0.47 },
-  figma: { ringIndex: 4, desktopThetaDeg: 48.2, mobileThetaDeg: 48.2, depthLayer: 'front', depthScale: 1.1, zOffset: 0.47 },
-  chatgpt: { ringIndex: 4, desktopThetaDeg: 136.3, mobileThetaDeg: 136.3, depthLayer: 'front', depthScale: 1.1, zOffset: 0.65 },
-  gemini: { ringIndex: 4, desktopThetaDeg: 168.0, mobileThetaDeg: 168.0, depthLayer: 'mid', depthScale: 1.0, zOffset: 0.65 },
-  premiere: { ringIndex: 4, desktopThetaDeg: 197.6, mobileThetaDeg: 197.6, depthLayer: 'back', depthScale: 0.85, zOffset: 0.78 },
-  blender: { ringIndex: 4, desktopThetaDeg: 359.9, mobileThetaDeg: 359.9, depthLayer: 'back', depthScale: 0.88, zOffset: 0.65 },
+  dreamweaver: { ringIndex: 0, desktopThetaDeg: 152.0, mobileThetaDeg: 152.0, depthLayer: 'front', depthScale: 1.0, zOffset: 0.65 },
+  illustrator: { ringIndex: 0, desktopThetaDeg: 242.0, mobileThetaDeg: 242.0, depthLayer: 'back', depthScale: 0.88, zOffset: 0.28 },
+  photoshop: { ringIndex: 1, desktopThetaDeg: 95.0, mobileThetaDeg: 95.0, depthLayer: 'front', depthScale: 1.04, zOffset: 0.16 },
+  claude: { ringIndex: 1, desktopThetaDeg: 196.0, mobileThetaDeg: 196.0, depthLayer: 'mid', depthScale: 0.95, zOffset: 0.65 },
+  'after-effects': { ringIndex: 2, desktopThetaDeg: 128.0, mobileThetaDeg: 128.0, depthLayer: 'mid', depthScale: 0.98, zOffset: 0.47 },
+  blender: { ringIndex: 2, desktopThetaDeg: 36.0, mobileThetaDeg: 36.0, depthLayer: 'back', depthScale: 0.9, zOffset: 0.65 },
+  figma: { ringIndex: 3, desktopThetaDeg: 68.0, mobileThetaDeg: 68.0, depthLayer: 'front', depthScale: 1.02, zOffset: 0.47 },
+  gemini: { ringIndex: 3, desktopThetaDeg: 164.0, mobileThetaDeg: 164.0, depthLayer: 'mid', depthScale: 0.96, zOffset: 0.65 },
+  chatgpt: { ringIndex: 4, desktopThetaDeg: 114.0, mobileThetaDeg: 114.0, depthLayer: 'front', depthScale: 1.04, zOffset: 0.65 },
+  premiere: { ringIndex: 4, desktopThetaDeg: 22.0, mobileThetaDeg: 22.0, depthLayer: 'back', depthScale: 0.88, zOffset: 0.78 },
 };
 
 export function getEarthOrbitConfig(_aspect = 1.6): EarthOrbitConfig {
@@ -539,6 +539,126 @@ export function computeEarthConcentricLayout(
       depthScale: assign.depthScale,
     };
   });
+}
+
+export interface OrbitalInstanceSlot extends OrbitalSlot {
+  /** Unique instance key (`tool.id` for primary, `${tool.id}__dup` for antipodal duplicate) */
+  instanceId: string;
+  /** Underlying tool catalog ID */
+  toolId: string;
+  isDuplicate: boolean;
+  /** Randomized icon size multiplier strictly within [0.50, 1.00] (50% to 100%) */
+  randomSizeScale: number;
+  /** Current orbital azimuth in degrees [0, 360) */
+  thetaDeg: number;
+  /** True only in the upper visible sky arc so at most one copy of any tool is visible at once */
+  isVisibleInSky: boolean;
+}
+
+export const ICON_MIN_RANDOM_SCALE = 0.5;
+export const ICON_MAX_RANDOM_SCALE = 1.0;
+
+/**
+ * Generates randomized [0.50, 1.00] size scales for every primary tool and its antipodal duplicate,
+ * ensuring each duplicate has a noticeably distinct size from its primary counterpart.
+ */
+export function generateOrbitalInstanceSizes(
+  tools: readonly ToolSpec[],
+  rng: () => number = Math.random
+): Record<string, number> {
+  const sizes: Record<string, number> = {};
+  const clampScale = (v: number) =>
+    Math.max(ICON_MIN_RANDOM_SCALE, Math.min(ICON_MAX_RANDOM_SCALE, v));
+
+  for (const tool of tools) {
+    const primary = clampScale(
+      ICON_MIN_RANDOM_SCALE + rng() * (ICON_MAX_RANDOM_SCALE - ICON_MIN_RANDOM_SCALE)
+    );
+    let dup = clampScale(
+      ICON_MIN_RANDOM_SCALE + rng() * (ICON_MAX_RANDOM_SCALE - ICON_MIN_RANDOM_SCALE)
+    );
+    if (Math.abs(dup - primary) < 0.14) {
+      dup = primary > 0.75
+        ? clampScale(ICON_MIN_RANDOM_SCALE + rng() * 0.22)
+        : clampScale(0.78 + rng() * 0.22);
+    }
+    sizes[tool.id] = Number(primary.toFixed(3));
+    sizes[`${tool.id}__dup`] = Number(dup.toFixed(3));
+  }
+  return sizes;
+}
+
+/**
+ * Computes orbital slots for all 20 icon instances (10 primaries + 10 antipodal duplicates placed
+ * 180 degrees opposite on their concentric ring). Because primary and duplicate sit 180° apart,
+ * only a single copy of each tool is ever in the visible upper sky arc (`sin(theta) > 0.02`) at once.
+ */
+export function computeEarthOrbitWithDuplicates(
+  tools: readonly ToolSpec[],
+  aspect = 1.6,
+  angleOffsetDeg = 0,
+  instanceSizes?: Record<string, number>
+): OrbitalInstanceSlot[] {
+  const cfg = getEarthOrbitConfig(aspect);
+  const isPortrait = aspect < 0.85;
+  const fallbackSizes =
+    instanceSizes ??
+    (() => {
+      let seed = 9137;
+      const seededRand = () => {
+        seed = (seed * 16807) % 2147483647;
+        return (seed - 1) / 2147483646;
+      };
+      return generateOrbitalInstanceSizes(tools, seededRand);
+    })();
+
+  const result: OrbitalInstanceSlot[] = [];
+
+  for (let index = 0; index < tools.length; index++) {
+    const tool = tools[index];
+    const assign = EARTH_ICON_ASSIGNMENTS[tool.id] ?? {
+      ringIndex: (index % 5) as 0 | 1 | 2 | 3 | 4,
+      desktopThetaDeg: 30 + (index * 18) % 150,
+      mobileThetaDeg: 30 + (index * 18) % 150,
+      depthLayer: 'mid' as DepthLayer,
+      depthScale: 0.94,
+      zOffset: 0.4,
+    };
+    const baseTheta = isPortrait ? assign.mobileThetaDeg : assign.desktopThetaDeg;
+    const speedMult = cfg.ringSpeedMultipliers[assign.ringIndex];
+
+    for (const isDuplicate of [false, true]) {
+      const instanceId = isDuplicate ? `${tool.id}__dup` : tool.id;
+      const rawTheta = baseTheta + (isDuplicate ? 180 : 0) - angleOffsetDeg * speedMult;
+      const thetaDeg = wrapArcAngle(rawTheta, cfg.wrapMinDeg, cfg.wrapMaxDeg);
+      const [x, y] = sampleEarthRingPoint(assign.ringIndex, thetaDeg, aspect);
+      const rad = (thetaDeg * Math.PI) / 180;
+      const isVisibleInSky = Math.sin(rad) > 0.02;
+      const randomSizeScale = Math.max(
+        ICON_MIN_RANDOM_SCALE,
+        Math.min(ICON_MAX_RANDOM_SCALE, fallbackSizes[instanceId] ?? 0.75)
+      );
+
+      result.push({
+        id: instanceId,
+        instanceId,
+        toolId: tool.id,
+        isDuplicate,
+        randomSizeScale,
+        thetaDeg,
+        isVisibleInSky,
+        position: [x, y, assign.zOffset],
+        baseRotationY: Math.atan2(-x, 18 - assign.zOffset) * 0.32,
+        baseRotationX: (y / 14) * 0.05,
+        baseRotationZ: -(x / 14) * 0.035,
+        ringIndex: assign.ringIndex,
+        depthLayer: assign.depthLayer,
+        depthScale: assign.depthScale,
+      });
+    }
+  }
+
+  return result;
 }
 
 interface OrbitArcLut {

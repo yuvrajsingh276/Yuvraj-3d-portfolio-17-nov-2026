@@ -85,16 +85,16 @@ function createPlanetSurfaceTexture(maxAnisotropy: number): THREE.CanvasTexture 
   return tex;
 }
 
-function createHorizonCoronaTexture(): THREE.CanvasTexture {
+function createHorizonCoronaTexture(innerColor: string, midColor: string, outerColor: string): THREE.CanvasTexture {
   const size = 256;
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext('2d')!;
-  const grad = ctx.createRadialGradient(size / 2, size / 2, size * 0.32, size / 2, size / 2, size * 0.5);
-  grad.addColorStop(0, 'rgba(139, 92, 246, 0.28)');
-  grad.addColorStop(0.35, 'rgba(217, 114, 168, 0.16)');
-  grad.addColorStop(0.7, 'rgba(34, 28, 92, 0.05)');
+  const grad = ctx.createRadialGradient(size / 2, size / 2, size * 0.16, size / 2, size / 2, size * 0.5);
+  grad.addColorStop(0, innerColor);
+  grad.addColorStop(0.32, midColor);
+  grad.addColorStop(0.66, outerColor);
   grad.addColorStop(1, 'rgba(10, 9, 29, 0)');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, size, size);
@@ -104,9 +104,8 @@ function createHorizonCoronaTexture(): THREE.CanvasTexture {
 }
 
 /**
- * Builds the dark, back-lit cosmic indigo Earth from the reference artwork:
- * deep midnight-indigo belly, textured upper violet continents, and crisp
- * rose-to-peach twilight horizon rim along the top crest.
+ * Builds the dark, back-lit cosmic indigo Earth with a lush volumetric twilight
+ * bloom halo along the upper horizon crest (violet -> rose -> peach-gold crown).
  */
 export function createEarthPlanet(initialRadius = 5.05, maxAnisotropy = 4): EarthPlanetHandle {
   const group = new THREE.Group();
@@ -115,10 +114,19 @@ export function createEarthPlanet(initialRadius = 5.05, maxAnisotropy = 4): Eart
   group.add(unitGroup);
 
   const surfaceDataTex = createPlanetSurfaceTexture(maxAnisotropy);
-  const coronaTexture = createHorizonCoronaTexture();
+  const innerBloomTex = createHorizonCoronaTexture(
+    'rgba(244, 184, 152, 0.34)',
+    'rgba(196, 108, 198, 0.21)',
+    'rgba(116, 58, 224, 0.08)'
+  );
+  const outerBloomTex = createHorizonCoronaTexture(
+    'rgba(154, 122, 242, 0.24)',
+    'rgba(124, 82, 230, 0.13)',
+    'rgba(58, 36, 150, 0.045)'
+  );
 
   // 1. Custom backlit cosmic Earth shader (immune to bright front RoomEnvironment wash-out)
-  const coreGeo = new THREE.SphereGeometry(1, 64, 48);
+  const coreGeo = new THREE.SphereGeometry(1, 72, 56);
   const coreMat = new THREE.ShaderMaterial({
     uniforms: {
       uSurfaceMap: { value: surfaceDataTex },
@@ -156,31 +164,35 @@ export function createEarthPlanet(initialRadius = 5.05, maxAnisotropy = 4): Eart
         vec3 v = normalize(vViewPos);
         float ndotv = clamp(dot(n, v), 0.0, 1.0);
 
-        // Strong backlit eclipse gradient: pitch indigo shadow below, cosmic violet glow near top
-        float topGradient = smoothstep(-0.1, 0.92, n.y);
-        float horizonEdge = pow(1.0 - ndotv, 3.1) * smoothstep(0.15, 0.9, n.y);
-        float crownEdge = pow(1.0 - ndotv, 4.4) * smoothstep(0.55, 0.98, n.y);
+        // Soft silhouette feather so the top horizon blends smoothly into the outer bloom
+        float edgeAntiAlias = smoothstep(0.0, 0.16, ndotv);
 
-        vec3 deepBelly = vec3(0.038, 0.034, 0.110);   // #0a091c
-        vec3 oceanTone = vec3(0.088, 0.075, 0.240);   // #16133d
-        vec3 landTone = vec3(0.205, 0.155, 0.485);    // #34277c
+        // Balanced backlit eclipse gradient: dark cosmic indigo below, gentle twilight glow near top
+        float topGradient = smoothstep(-0.08, 0.94, n.y);
+        float horizonEdge = pow(1.0 - ndotv, 2.85) * smoothstep(0.14, 0.92, n.y);
+        float crownEdge = pow(1.0 - ndotv, 3.8) * smoothstep(0.50, 0.98, n.y) * edgeAntiAlias;
+
+        vec3 deepBelly = vec3(0.024, 0.021, 0.078);   // #060514
+        vec3 oceanTone = vec3(0.074, 0.062, 0.215);   // #131037
+        vec3 landTone = vec3(0.195, 0.145, 0.465);    // #322577
         vec3 cloudTint = vec3(0.30, 0.24, 0.62);
 
         vec3 surface = mix(oceanTone, landTone, data.r * 0.9);
-        surface = mix(surface, cloudTint, cloud * 0.24);
+        surface = mix(surface, cloudTint, cloud * 0.25);
 
         // Reveal subtle continents/clouds primarily toward the upper backlit hemisphere
-        vec3 color = mix(deepBelly, surface, 0.14 + topGradient * 0.86);
+        vec3 color = mix(deepBelly, surface, 0.14 + topGradient * 0.84);
 
-        // Warm atmospheric horizon rim (indigo -> violet-rose -> peach-amber crown)
-        vec3 violetAtmo = vec3(0.46, 0.32, 0.88);
-        vec3 roseAtmo = vec3(0.84, 0.42, 0.62);
-        vec3 peachAtmo = vec3(0.98, 0.68, 0.46);
+        // Restrained atmospheric horizon rim (indigo -> muted rose -> soft peach crown)
+        vec3 violetAtmo = vec3(0.48, 0.34, 0.92);
+        vec3 roseAtmo = vec3(0.84, 0.44, 0.70);
+        vec3 peachAtmo = vec3(0.96, 0.70, 0.54);
 
-        vec3 rimColor = mix(violetAtmo, roseAtmo, smoothstep(0.28, 0.84, n.y));
-        rimColor = mix(rimColor, peachAtmo, smoothstep(0.72, 0.99, n.y));
+        vec3 rimColor = mix(violetAtmo, roseAtmo, smoothstep(0.28, 0.82, n.y));
+        rimColor = mix(rimColor, peachAtmo, smoothstep(0.70, 0.98, n.y));
 
-        color += rimColor * (horizonEdge * 0.56 + crownEdge * 0.64);
+        float bloomPulse = 0.96 + 0.05 * sin(uTime * 0.75);
+        color += rimColor * (horizonEdge * 0.44 + crownEdge * 0.50) * bloomPulse;
         gl_FragColor = vec4(color, 1.0);
       }
     `,
@@ -189,8 +201,8 @@ export function createEarthPlanet(initialRadius = 5.05, maxAnisotropy = 4): Eart
   coreMesh.renderOrder = -32;
   unitGroup.add(coreMesh);
 
-  // 2. Thin outer atmospheric scatter shell around top horizon limb
-  const atmoGeo = new THREE.SphereGeometry(1.02, 56, 42);
+  // 2. Subtle silky atmospheric inner glow limb that feathers smoothly to zero at its outer edge
+  const atmoGeo = new THREE.SphereGeometry(1.048, 64, 48);
   const atmoMat = new THREE.ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
@@ -213,11 +225,13 @@ export function createEarthPlanet(initialRadius = 5.05, maxAnisotropy = 4): Eart
         vec3 n = normalize(vNormalView);
         vec3 v = normalize(vViewPos);
         float ndotv = clamp(dot(n, v), 0.0, 1.0);
-        float rim = pow(1.0 - ndotv, 5.2);
-        float topMask = smoothstep(0.34, 0.96, n.y);
-        vec3 col = mix(vec3(0.45, 0.32, 0.88), vec3(0.98, 0.66, 0.48), smoothstep(0.58, 0.99, n.y));
-        float pulse = 0.95 + 0.05 * sin(uTime * 0.8);
-        float alpha = clamp(rim * topMask * 0.52 * pulse, 0.0, 0.65);
+        // Peak softly just inside the limb and feather out cleanly at ndotv -> 0 (no jagged rim)
+        float outerFeather = smoothstep(0.0, 0.32, ndotv);
+        float rim = pow(1.0 - ndotv, 3.1) * outerFeather;
+        float topMask = smoothstep(0.24, 0.96, n.y);
+        vec3 col = mix(vec3(0.50, 0.34, 0.94), vec3(0.94, 0.68, 0.54), smoothstep(0.56, 0.98, n.y));
+        float pulse = 0.95 + 0.06 * sin(uTime * 0.85);
+        float alpha = clamp(rim * topMask * 0.60 * pulse, 0.0, 0.48);
         gl_FragColor = vec4(col, alpha);
       }
     `,
@@ -229,20 +243,75 @@ export function createEarthPlanet(initialRadius = 5.05, maxAnisotropy = 4): Eart
   atmoMesh.renderOrder = -30;
   unitGroup.add(atmoMesh);
 
-  // 3. Subtle atmospheric twilight halo behind the top crest
-  const coronaMat = new THREE.SpriteMaterial({
-    map: coronaTexture,
+  // 3. Soft outer volumetric bloom aura shell radiating gently off the planet limb
+  const outerBloomShellGeo = new THREE.SphereGeometry(1.20, 56, 42);
+  const outerBloomShellMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+    },
+    vertexShader: `
+      varying vec3 vNormalView;
+      varying vec3 vViewPos;
+      void main() {
+        vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+        vNormalView = normalize(normalMatrix * normal);
+        vViewPos = -mvPos.xyz;
+        gl_Position = projectionMatrix * mvPos;
+      }
+    `,
+    fragmentShader: `
+      uniform float uTime;
+      varying vec3 vNormalView;
+      varying vec3 vViewPos;
+      void main() {
+        vec3 n = normalize(vNormalView);
+        vec3 v = normalize(vViewPos);
+        // BackSide normal faces inward; smooth radial bloom radiating outward from Earth limb
+        float grazing = clamp(dot(-n, v), 0.0, 1.0);
+        float halo = pow(grazing, 2.7) * smoothstep(0.0, 0.90, -n.y);
+        vec3 col = mix(vec3(0.42, 0.26, 0.90), vec3(0.90, 0.56, 0.66), smoothstep(0.36, 0.94, -n.y));
+        float pulse = 0.94 + 0.06 * sin(uTime * 0.7 + 0.6);
+        float alpha = clamp(halo * 0.40 * pulse, 0.0, 0.44);
+        gl_FragColor = vec4(col, alpha);
+      }
+    `,
     transparent: true,
-    opacity: 0.45,
+    side: THREE.BackSide,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  const outerBloomShellMesh = new THREE.Mesh(outerBloomShellGeo, outerBloomShellMat);
+  outerBloomShellMesh.renderOrder = -33;
+  unitGroup.add(outerBloomShellMesh);
+
+  // 4. Dual layered atmospheric bloom corona sprites behind the upper crest
+  const innerCoronaMat = new THREE.SpriteMaterial({
+    map: innerBloomTex,
+    transparent: true,
+    opacity: 0.40,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     depthTest: false,
   });
-  const coronaSprite = new THREE.Sprite(coronaMat);
-  coronaSprite.position.set(0, 0.45, -0.45);
-  coronaSprite.scale.set(2.35, 2.35, 1);
-  coronaSprite.renderOrder = -35;
-  unitGroup.add(coronaSprite);
+  const innerCoronaSprite = new THREE.Sprite(innerCoronaMat);
+  innerCoronaSprite.position.set(0, 0.52, -0.35);
+  innerCoronaSprite.scale.set(2.35, 2.02, 1);
+  innerCoronaSprite.renderOrder = -35;
+  unitGroup.add(innerCoronaSprite);
+
+  const outerCoronaMat = new THREE.SpriteMaterial({
+    map: outerBloomTex,
+    transparent: true,
+    opacity: 0.46,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    depthTest: false,
+  });
+  const outerCoronaSprite = new THREE.Sprite(outerCoronaMat);
+  outerCoronaSprite.position.set(0, 0.40, -0.55);
+  outerCoronaSprite.scale.set(3.2, 2.8, 1);
+  outerCoronaSprite.renderOrder = -36;
+  unitGroup.add(outerCoronaSprite);
 
   return {
     group,
@@ -252,15 +321,23 @@ export function createEarthPlanet(initialRadius = 5.05, maxAnisotropy = 4): Eart
     update(elapsedSec: number) {
       coreMat.uniforms.uTime.value = elapsedSec;
       atmoMat.uniforms.uTime.value = elapsedSec;
+      outerBloomShellMat.uniforms.uTime.value = elapsedSec;
+      const breath = 1 + 0.032 * Math.sin(elapsedSec * 0.75);
+      innerCoronaMat.opacity = 0.38 * breath;
+      outerCoronaMat.opacity = 0.44 * (1 + 0.036 * Math.sin(elapsedSec * 0.6 + 1.1));
     },
     dispose() {
       coreGeo.dispose();
       coreMat.dispose();
       atmoGeo.dispose();
       atmoMat.dispose();
-      coronaMat.dispose();
+      outerBloomShellGeo.dispose();
+      outerBloomShellMat.dispose();
+      innerCoronaMat.dispose();
+      outerCoronaMat.dispose();
       surfaceDataTex.dispose();
-      coronaTexture.dispose();
+      innerBloomTex.dispose();
+      outerBloomTex.dispose();
     },
   };
 }

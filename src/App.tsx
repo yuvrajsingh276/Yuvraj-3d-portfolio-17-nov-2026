@@ -173,14 +173,18 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div id="home" className={`relative isolate flow-root min-h-screen bg-[#0a091d] ${projectId ? "min-h-0 overflow-x-hidden" : ""}`}>
+      <div id="home" className={`relative isolate flow-root min-h-screen bg-black ${projectId ? "min-h-0 overflow-x-hidden" : ""}`}>
       {!projectId && <>
       <main
         onPointerMove={(e) => {
           e.currentTarget.style.setProperty('--pointer-x', e.clientX + 'px');
           e.currentTarget.style.setProperty('--pointer-y', e.clientY + 'px');
         }}
-        className="fixed inset-0 z-0 h-screen w-screen overflow-hidden bg-[#0a091d]"
+        className="fixed inset-0 z-0 h-screen w-screen overflow-hidden"
+        style={{
+          background:
+            'linear-gradient(180deg, #000000 0%, #020205 32%, #070616 64%, #0c0a22 84%, #120e30 100%)',
+        }}
         data-selected-tool={selectedTool?.id ?? 'none'}
         data-hovered-tool={hoveredTool?.id ?? 'none'}
         data-motion-paused={String(motionPaused)}
@@ -203,7 +207,7 @@ export default function App() {
           }}
         />
 
-        {/* Upper-aligned Hero typography positioned cleanly above the 3D orbital constellation */}
+        {/* Upper-aligned Hero typography positioned cleanly with airy breathing room from top nav & 3D stage */}
         <AnimatePresence>
           <motion.section
             key="hero-profile-layer"
@@ -216,7 +220,7 @@ export default function App() {
               transition: { duration: 0.36, ease: HERO_EASE },
             }}
             transition={{ duration: 0.72, ease: HERO_EASE }}
-            className="pointer-events-none fixed inset-0 z-10 flex items-start justify-center px-5 pt-20 sm:px-8 sm:pt-22 lg:pt-[5.5rem]"
+            className="pointer-events-none fixed inset-0 z-10 flex items-start justify-center px-5 pt-28 sm:px-8 sm:pt-32 lg:pt-[8.75rem]"
           >
             <div className="w-full max-w-[92vw] overflow-visible text-center sm:max-w-[740px] lg:max-w-[min(92vw,960px)]">
               <motion.h1
@@ -231,7 +235,7 @@ export default function App() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.85, delay: 0.18, ease: HERO_EASE }}
-                className="mx-auto mt-1.5 max-w-[270px] text-[0.8125rem] font-medium leading-[1.38] tracking-[0.02em] text-[#dce7ff] text-balance sm:mt-2 sm:max-w-none sm:text-[1.18rem]"
+                className="mx-auto mt-2.5 max-w-[270px] text-[0.8125rem] font-medium leading-[1.38] tracking-[0.02em] text-[#dce7ff] text-balance sm:mt-3 sm:max-w-none sm:text-[1.18rem]"
               >
                 Creative Technologist • 3D Artist • Motion Designer
               </motion.h2>
@@ -239,7 +243,7 @@ export default function App() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.85, delay: 0.28, ease: HERO_EASE }}
-                className="mx-auto mt-2 max-w-[260px] text-[0.72rem] font-normal leading-[1.5] text-[#b8c8ea]/85 text-balance sm:mt-2.5 sm:max-w-[540px] sm:text-[0.95rem] sm:leading-[1.6]"
+                className="mx-auto mt-3 max-w-[260px] text-[0.72rem] font-normal leading-[1.5] text-[#b8c8ea]/85 text-balance sm:mt-3.5 sm:max-w-[540px] sm:text-[0.95rem] sm:leading-[1.6]"
               >
                 Designing immersive digital experiences through 3D, motion, CGI and interactive technology.
               </motion.p>
