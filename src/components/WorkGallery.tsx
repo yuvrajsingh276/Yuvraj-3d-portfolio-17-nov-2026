@@ -2,12 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ArrowLeft, ArrowRight, ArrowUpRight, Play } from 'lucide-react';
 
-type Project = {
+export type Project = {
   id: string; title: string; category: string; description: string;
   year: string; type: string; mood: string; accent: string; frames: string[];
 };
 
-const projects: Project[] = [
+export const projects: Project[] = [
   { id: '01', title: 'Future of Family Healthcare', category: '3D / CGI FILM', description: 'A cinematic visual direction exploring the next generation of connected family healthcare.', year: '2025', type: 'Brand film · 3D animation', mood: 'violet', accent: '#bca7ff', frames: ['Key visual', 'Product detail', 'Motion frame'] },
   { id: '02', title: 'Gemora — The Art of Detail', category: 'PRODUCT VISUALIZATION', description: 'A refined product story built around material, light, precision and elegant composition.', year: '2024', type: 'CGI · Product film', mood: 'gold', accent: '#e8c98b', frames: ['Hero render', 'Material study', 'Detail frame'] },
   { id: '03', title: 'Beyond the Frame', category: 'MOTION DESIGN', description: 'An exploration of rhythm, graphic form and dimensional motion for a bold visual identity.', year: '2024', type: 'Motion identity · 2D / 3D', mood: 'blue', accent: '#8fc8f4', frames: ['Art direction', 'Motion frame', 'Final frame'] },
@@ -40,96 +40,83 @@ function Visual({ project, className = '' }: { project: Project; className?: str
   );
 }
 
-export function WorkGallery() {
+export function WorkGallery({ onOpenProject }: { onOpenProject: (projectId: string) => void }) {
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState(0);
-  const [detail, setDetail] = useState(false);
   const project = projects[active];
   const select = useCallback((index: number) => setActive((index + projects.length) % projects.length), []);
   const move = useCallback((direction: number) => select(active + direction), [active, select]);
-
-  useEffect(() => {
-    const closeProjectDetail = () => setDetail(false);
-    window.addEventListener('portfolio:navigate', closeProjectDetail);
-    return () => window.removeEventListener('portfolio:navigate', closeProjectDetail);
-  }, []);
-
-  useEffect(() => {
-    if (!detail) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = previousOverflow; };
-  }, [detail]);
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'ArrowRight') move(1);
-      if (event.key === 'ArrowLeft') move(-1);
-      if (event.key === 'Escape') setDetail(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [move]);
 
   return (
     <section aria-label="Selected work" className="work-exhibition relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#080d14] text-white">
       <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse at 78% 42%,rgba(108,130,158,.12),transparent 48%),linear-gradient(180deg,#0b111b 0%,#080d14 100%)' }} />
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
-        <AnimatePresence mode="wait" initial={false}>
-          {!detail ? (
-            <motion.div key="overview" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: .985 }} transition={{ duration: .35 }} className="relative flex min-h-0 flex-1 flex-col">
-              <Visual project={project} className="absolute inset-0" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#080d14]/95 via-[#080d14]/65 to-transparent" />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#080d14] via-transparent to-[#080d14]/15" />
-              <div className="relative z-10 flex min-h-0 flex-1 items-center px-6 pb-28 pt-8 sm:px-12 lg:px-[9vw]">
-                <div className="max-w-[620px]">
-                  <p className="mb-4 flex items-center gap-3 text-[9px] font-semibold tracking-[.28em] text-white/55"><span className="h-px w-7 bg-white/50" />{project.category}</p>
-                  <motion.h2 key={project.id + 'title'} initial={reduceMotion ? false : { opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .5 }} className="max-w-[13ch] text-[clamp(2.3rem,6.2vw,5.8rem)] font-semibold leading-[.98] tracking-[-.065em]">{project.title}</motion.h2>
-                  <p className="mt-5 max-w-md text-xs leading-6 text-white/55 sm:text-sm">{project.description}</p>
-                  <div className="mt-6 flex items-center gap-5 text-[9px] tracking-[.18em] text-white/55"><span>{project.year}</span><span className="h-3 w-px bg-white/20" /><span>{project.type}</span></div>
-                  <button type="button" onClick={() => setDetail(true)} className="mt-8 inline-flex items-center gap-3 border border-white/30 bg-white/[.08] px-5 py-3 text-[9px] font-semibold tracking-[.2em] backdrop-blur-md transition hover:border-white/70 hover:bg-white/[.15]"><Play size={12} fill="currentColor" /> EXPLORE PROJECT <ArrowUpRight size={13} /></button>
-                </div>
-              </div>
-              <div className="absolute bottom-0 left-0 right-0 z-20 border-t border-white/[.09] bg-[#080d14]/80 px-5 pb-4 pt-3 backdrop-blur-xl sm:px-9 lg:px-14">
-                <div className="mb-3 flex items-center justify-between"><span className="text-[8px] font-semibold tracking-[.25em] text-white/40">THE COLLECTION <span className="ml-2 text-white/20">/ 10</span></span><div className="flex items-center gap-2"><button aria-label="Previous project" onClick={() => move(-1)} className="grid h-7 w-7 place-items-center border border-white/15 text-white/65 transition hover:bg-white/10"><ArrowLeft size={13} /></button><button aria-label="Next project" onClick={() => move(1)} className="grid h-7 w-7 place-items-center border border-white/15 text-white/65 transition hover:bg-white/10"><ArrowRight size={13} /></button></div></div>
-                <div className="flex gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  {projects.map((item, index) => <button key={item.id} type="button" onMouseEnter={() => select(index)} onFocus={() => select(index)} onClick={() => { select(index); setDetail(true); }} aria-label={`Open ${item.title}`} aria-current={index === active ? 'true' : undefined} className={`group relative h-[58px] w-[92px] shrink-0 overflow-hidden border transition-all duration-300 sm:h-[70px] sm:w-[118px] ${index === active ? 'border-white/80 opacity-100' : 'border-white/10 opacity-55 hover:opacity-90'}`}><Visual project={item} className="h-full w-full transition-transform duration-500 group-hover:scale-110" /><span className="absolute bottom-1.5 left-2 font-mono text-[8px] tracking-widest text-white/90">{item.id}</span>{index === active && <span className="absolute inset-x-0 bottom-0 h-[2px] bg-white" />}</button>)}
-                </div>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div key="detail" initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: .38 }} className="relative grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[1.12fr_.88fr]">
-              <div className="relative flex min-h-[430px] flex-col justify-center px-6 pb-12 pt-16 sm:px-12 lg:min-h-0 lg:px-[7vw]">
-                <button type="button" onClick={() => setDetail(false)} className="absolute left-6 top-6 inline-flex items-center gap-2 text-[9px] tracking-[.2em] text-white/50 transition hover:text-white sm:left-12"><ArrowLeft size={13} /> BACK TO COLLECTION</button>
-                <p className="mb-4 text-[9px] font-semibold tracking-[.28em]" style={{ color: project.accent }}>{project.category}</p>
-                <button type="button" onClick={() => move(1)} className="mb-5 inline-flex w-fit items-center gap-2 border border-white/20 px-4 py-2 text-[9px] font-semibold tracking-[.18em] text-white/75 transition hover:border-white/60 hover:bg-white/[.08] hover:text-white">NEXT PROJECT <ArrowRight size={13} /></button>
-                <h2 className="max-w-[13ch] text-[clamp(2.2rem,5vw,4.6rem)] font-semibold leading-[.98] tracking-[-.06em]">{project.title}</h2>
-                <p className="mt-5 max-w-lg text-sm leading-7 text-white/55">{project.description}</p>
-                <div className="mt-8 grid max-w-lg grid-cols-3 border-y border-white/10 py-4">
-                  <div><p className="text-[8px] tracking-[.2em] text-white/35">YEAR</p><p className="mt-2 text-sm">{project.year}</p></div><div><p className="text-[8px] tracking-[.2em] text-white/35">DISCIPLINE</p><p className="mt-2 text-xs text-white/75">3D / MOTION</p></div><div><p className="text-[8px] tracking-[.2em] text-white/35">ROLE</p><p className="mt-2 text-xs text-white/75">ART DIRECTION</p></div>
-                </div>
-                <div className="mt-8 max-w-lg">
-                  <p className="mb-3 text-[8px] font-semibold tracking-[.25em] text-white/35">PROJECT CONTENT</p>
-                  {project.frames.map((frame, i) => <div key={frame} className="flex items-center gap-3 border-b border-white/[.08] py-3"><span className="font-mono text-[9px] text-white/30">0{i + 1}</span><span className="flex-1 text-xs text-white/75">{frame}</span><ArrowUpRight size={13} className="text-white/35" /></div>)}
-                </div>
-
-              </div>
-              <div className="relative hidden min-h-[70vh] overflow-hidden border-l border-white/[.08] lg:block"><Visual project={project} className="absolute inset-0" /><div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#080d14]/25" /><div className="absolute bottom-8 right-8 text-right"><p className="text-[8px] tracking-[.25em] text-white/45">PROJECT COVER / {project.year}</p><p className="mt-2 text-xs tracking-widest text-white/80">{project.id} — {project.category}</p></div></div>
-              <div className="col-span-full border-t border-white/[.08] bg-[#080d14] px-6 py-10 sm:px-12 lg:px-[7vw]">
-                <p className="mb-5 text-[9px] font-semibold tracking-[.25em] text-white/40">PROJECT GALLERY / SELECTED FRAMES</p>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  {project.frames.map((frame, index) => <div key={frame} className="group">
-                    <div className="relative aspect-[4/3] overflow-hidden border border-white/10"><Visual project={project} className="h-full w-full transition-transform duration-700 group-hover:scale-[1.04]" /><span className="absolute bottom-3 left-3 font-mono text-[9px] tracking-widest text-white/75">0{index+1}</span></div>
-                    <p className="mt-3 text-[10px] tracking-[.12em] text-white/65">{frame}</p>
-                  </div>)}
-                </div>
-                <button type="button" onClick={() => move(1)} className="mt-9 inline-flex items-center gap-3 border border-white/25 px-5 py-3 text-[9px] font-semibold tracking-[.2em] text-white/80 transition hover:border-white/70 hover:bg-white/[.08]">NEXT PROJECT <ArrowRight size={13} /></button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <motion.div key="overview" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} className="relative flex min-h-0 flex-1 flex-col">
+          <Visual project={project} className="absolute inset-0" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#080d14]/95 via-[#080d14]/65 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#080d14] via-transparent to-[#080d14]/15" />
+          <div className="relative z-10 flex min-h-0 flex-1 items-center px-6 pb-28 pt-8 sm:px-12 lg:px-[9vw]">
+            <div className="max-w-[620px]">
+              <p className="mb-4 flex items-center gap-3 text-[9px] font-semibold tracking-[.28em] text-white/55"><span className="h-px w-7 bg-white/50" />{project.category}</p>
+              <motion.h2 key={project.id + 'title'} initial={reduceMotion ? false : { opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .5 }} className="max-w-[13ch] text-[clamp(2.3rem,6.2vw,5.8rem)] font-semibold leading-[.98] tracking-[-.065em]">{project.title}</motion.h2>
+              <p className="mt-5 max-w-md text-xs leading-6 text-white/55 sm:text-sm">{project.description}</p>
+              <div className="mt-6 flex items-center gap-5 text-[9px] tracking-[.18em] text-white/55"><span>{project.year}</span><span className="h-3 w-px bg-white/20" /><span>{project.type}</span></div>
+              <button type="button" onClick={() => onOpenProject(project.id)} className="mt-8 inline-flex items-center gap-3 border border-white/30 bg-white/[.08] px-5 py-3 text-[9px] font-semibold tracking-[.2em] backdrop-blur-md transition hover:border-white/70 hover:bg-white/[.15]"><Play size={12} fill="currentColor" /> EXPLORE PROJECT <ArrowUpRight size={13} /></button>
+            </div>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 z-20 border-t border-white/[.09] bg-[#080d14]/80 px-5 pb-4 pt-3 backdrop-blur-xl sm:px-9 lg:px-14">
+            <div className="mb-3 flex items-center justify-between"><span className="text-[8px] font-semibold tracking-[.25em] text-white/40">THE COLLECTION <span className="ml-2 text-white/20">/ 10</span></span><div className="flex items-center gap-2"><button aria-label="Previous project" onClick={() => move(-1)} className="grid h-7 w-7 place-items-center border border-white/15 text-white/65 transition hover:bg-white/10"><ArrowLeft size={13} /></button><button aria-label="Next project" onClick={() => move(1)} className="grid h-7 w-7 place-items-center border border-white/15 text-white/65 transition hover:bg-white/10"><ArrowRight size={13} /></button></div></div>
+            <div className="flex gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {projects.map((item, index) => <button key={item.id} type="button" onMouseEnter={() => select(index)} onFocus={() => select(index)} onClick={() => { select(index); onOpenProject(item.id); }} aria-label={\`Open \${item.title}\`} aria-current={index === active ? 'true' : undefined} className={\`group relative h-[58px] w-[92px] shrink-0 overflow-hidden border transition-all duration-300 sm:h-[70px] sm:w-[118px] \${index === active ? 'border-white/80 opacity-100' : 'border-white/10 opacity-55 hover:opacity-90'}\`}><Visual project={item} className="h-full w-full transition-transform duration-500 group-hover:scale-110" /><span className="absolute bottom-1.5 left-2 font-mono text-[8px] tracking-widest text-white/90">{item.id}</span>{index === active && <span className="absolute inset-x-0 bottom-0 h-[2px] bg-white" />}</button>)}
+            </div>
+          </div>
+        </motion.div>
       </div>
       <footer className="relative z-20 flex h-7 shrink-0 items-center justify-between border-t border-white/[.06] px-5 text-[7px] tracking-[.2em] text-white/25 sm:px-9 lg:px-14"><span>YUVRAJ SINGH / VISUAL DESIGNER</span><span>INDEPENDENT CREATIVE PORTFOLIO · 2026</span></footer>
     </section>
+  );
+}
+
+export function ProjectDetailPage({ projectId, onBack, onNext }: { projectId: string; onBack: () => void; onNext: (projectId: string) => void }) {
+  const index = Math.max(0, projects.findIndex((item) => item.id === projectId));
+  const project = projects[index];
+  const nextProject = projects[(index + 1) % projects.length];
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    const previous = document.body.style.backgroundColor;
+    document.body.style.backgroundColor = '#080d14';
+    return () => { document.body.style.backgroundColor = previous; };
+  }, [projectId]);
+
+  return (
+    <main key={project.id} className="min-h-screen bg-[#080d14] pt-16 text-white">
+      <section className="grid min-h-[calc(100svh-4rem)] grid-cols-1 lg:grid-cols-[.9fr_1.1fr]">
+        <div className="relative flex flex-col justify-center px-6 py-14 sm:px-12 lg:px-[7vw] lg:py-20">
+          <button type="button" onClick={onBack} className="mb-12 inline-flex w-fit items-center gap-2 text-[9px] tracking-[.2em] text-white/55 transition hover:text-white"><ArrowLeft size={14} /> BACK TO COLLECTION</button>
+          <p className="mb-5 text-[9px] font-semibold tracking-[.28em]" style={{ color: project.accent }}>{project.category}</p>
+          <h1 className="max-w-[13ch] text-[clamp(2.5rem,5.5vw,5.5rem)] font-semibold leading-[.96] tracking-[-.065em]">{project.title}</h1>
+          <p className="mt-7 max-w-xl text-sm leading-7 text-white/60">{project.description}</p>
+          <div className="mt-10 grid max-w-lg grid-cols-3 border-y border-white/10 py-5">
+            <div><p className="text-[8px] tracking-[.2em] text-white/35">YEAR</p><p className="mt-2 text-sm">{project.year}</p></div>
+            <div><p className="text-[8px] tracking-[.2em] text-white/35">DISCIPLINE</p><p className="mt-2 text-xs text-white/75">{project.type}</p></div>
+            <div><p className="text-[8px] tracking-[.2em] text-white/35">ROLE</p><p className="mt-2 text-xs text-white/75">ART DIRECTION</p></div>
+          </div>
+          <button type="button" onClick={() => onNext(nextProject.id)} className="mt-10 inline-flex w-fit items-center gap-3 border border-white/25 px-5 py-3 text-[9px] font-semibold tracking-[.2em] text-white/85 transition hover:border-white/70 hover:bg-white/[.08]">NEXT PROJECT <ArrowRight size={14} /></button>
+        </div>
+        <div className="relative min-h-[55svh] overflow-hidden border-y border-white/[.08] lg:min-h-0 lg:border-l lg:border-y-0">
+          <Visual project={project} className="absolute inset-0" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#080d14]/65 via-transparent to-black/10" />
+          <div className="absolute bottom-7 right-7 text-right"><p className="text-[8px] tracking-[.25em] text-white/55">PROJECT COVER / {project.year}</p><p className="mt-2 text-xs tracking-widest text-white">{project.id} — {project.category}</p></div>
+        </div>
+      </section>
+      <section className="mx-auto max-w-[1600px] px-6 py-16 sm:px-12 lg:px-[7vw] lg:py-24">
+        <div className="mb-9 flex flex-wrap items-end justify-between gap-4"><div><p className="text-[9px] font-semibold tracking-[.25em] text-white/40">SELECTED WORK</p><h2 className="mt-3 text-2xl font-medium tracking-tight sm:text-3xl">Project gallery</h2></div><span className="text-[9px] tracking-[.2em] text-white/35">01 — 0{project.frames.length}</span></div>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {project.frames.map((frame, i) => <article key={frame} className="group"><div className="relative aspect-[4/3] overflow-hidden border border-white/10"><Visual project={project} className="h-full w-full transition-transform duration-700 group-hover:scale-[1.04]" /><span className="absolute bottom-4 left-4 font-mono text-[9px] tracking-widest text-white/75">0{i + 1}</span></div><p className="mt-4 text-[10px] tracking-[.14em] text-white/65">{frame}</p></article>)}
+        </div>
+        <div className="mt-16 flex flex-wrap items-center justify-between gap-5 border-t border-white/10 pt-8"><button type="button" onClick={onBack} className="inline-flex items-center gap-2 text-[9px] tracking-[.2em] text-white/55 transition hover:text-white"><ArrowLeft size={14} /> BACK TO COLLECTION</button><button type="button" onClick={() => onNext(nextProject.id)} className="inline-flex items-center gap-3 border border-white/25 px-5 py-3 text-[9px] font-semibold tracking-[.2em] text-white/85 transition hover:border-white/70 hover:bg-white/[.08]">NEXT PROJECT <ArrowRight size={14} /></button></div>
+      </section>
+    </main>
   );
 }
