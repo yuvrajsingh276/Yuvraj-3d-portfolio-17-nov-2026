@@ -1,26 +1,26 @@
-import { useCallback, useEffect, useState } from 'react';
-import { motion, useReducedMotion } from 'motion/react';
-import { ArrowLeft, ArrowRight, ArrowUpRight, Play } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { ArrowLeft, ArrowRight, Check, Maximize2, Play, Plus, Search, X } from 'lucide-react';
+import {
+  collectGalleryPreloadKeys,
+  filterWorkProjects,
+  getMediaGridClasses,
+  getProjectById,
+  projects,
+  WORK_NAV_CATEGORIES,
+  type Project,
+  type ProjectMedia,
+  type WorkNavCategory,
+} from '../data/workCatalog';
+import { resolveWorkAsset } from '../data/workAssets';
+import { GalleryPreloader, useImagePreloader } from './GalleryPreloader';
+import { dedupeImageUrls } from './galleryPreloaderUtils';
 
-export type Project = {
-  id: string; title: string; category: string; description: string;
-  year: string; type: string; mood: string; accent: string; frames: string[];
-};
-
-export const projects: Project[] = [
-  { id: '01', title: 'Future of Family Healthcare', category: '3D / CGI FILM', description: 'A cinematic visual direction exploring the next generation of connected family healthcare.', year: '2025', type: 'Brand film · 3D animation', mood: 'violet', accent: '#bca7ff', frames: ['Key visual', 'Product detail', 'Motion frame'] },
-  { id: '02', title: 'Gemora — The Art of Detail', category: 'PRODUCT VISUALIZATION', description: 'A refined product story built around material, light, precision and elegant composition.', year: '2024', type: 'CGI · Product film', mood: 'gold', accent: '#e8c98b', frames: ['Hero render', 'Material study', 'Detail frame'] },
-  { id: '03', title: 'Beyond the Frame', category: 'MOTION DESIGN', description: 'An exploration of rhythm, graphic form and dimensional motion for a bold visual identity.', year: '2024', type: 'Motion identity · 2D / 3D', mood: 'blue', accent: '#8fc8f4', frames: ['Art direction', 'Motion frame', 'Final frame'] },
-  { id: '04', title: 'Digital Dimensions', category: 'BRAND EXPERIENCE', description: 'A visual system that brings brand language into a tactile, immersive digital space.', year: '2023', type: 'Brand design · Digital', mood: 'rose', accent: '#eaa6c5', frames: ['Visual identity', 'Digital application', 'Final frame'] },
-  { id: '05', title: 'The Shape of Tomorrow', category: '3D ART DIRECTION', description: 'A study in atmosphere, sculptural form and cinematic lighting.', year: '2023', type: '3D art direction · CGI', mood: 'emerald', accent: '#8bd7b3', frames: ['Sculptural study', 'Lighting pass', 'Final render'] },
-  { id: '06', title: 'Neon Form Studies', category: 'CONCEPT / 3D STUDY', description: 'A concept-led exploration of luminous forms, colour and premium product-style lighting.', year: '2022', type: '3D study · Look development', mood: 'violet', accent: '#bca7ff', frames: ['Form study', 'Lighting study', 'Final frame'] },
-  { id: '07', title: 'Motion in Nature', category: 'CONCEPT / MOTION STUDY', description: 'A visual study imagining organic movement translated into a bold motion language.', year: '2022', type: 'Motion design · Experiment', mood: 'emerald', accent: '#8bd7b3', frames: ['Nature study', 'Motion frame', 'Final frame'] },
-  { id: '08', title: 'The Future Interface', category: 'CONCEPT / UI MOTION', description: 'A speculative interface concept combining dimensional graphics and kinetic typography.', year: '2021', type: 'UI motion · Design', mood: 'blue', accent: '#8fc8f4', frames: ['Interface system', 'UI motion', 'Final frame'] },
-  { id: '09', title: 'Objects of Desire', category: 'CONCEPT / PRODUCT CGI', description: 'A product campaign study focused on material finish, controlled reflections and visual impact.', year: '2021', type: 'Product CGI · Campaign', mood: 'rose', accent: '#eaa6c5', frames: ['Product hero', 'Material detail', 'Final render'] },
-  { id: '10', title: 'Beyond the Ordinary', category: 'CONCEPT / BRAND FILM', description: 'A brand-film direction created to explore cinematic composition and storytelling.', year: '2020', type: 'Brand film · Visual story', mood: 'gold', accent: '#e8c98b', frames: ['Story frame', 'Visual direction', 'Final frame'] },
-];
+export { projects };
+export type { Project };
 
 const surfaces: Record<string, string> = {
+  orange: 'radial-gradient(ellipse at 70% 28%, #b45309 0%, #5c2507 32%, #1f110a 70%, #09080b 100%)',
   violet: 'radial-gradient(ellipse at 72% 30%, #8772ad 0%, #3c3454 28%, #151b29 68%, #090e17 100%)',
   gold: 'radial-gradient(ellipse at 70% 28%, #a18a61 0%, #514735 32%, #1b1b20 72%, #090d13 100%)',
   blue: 'radial-gradient(ellipse at 72% 28%, #6285a4 0%, #34485c 30%, #17212d 68%, #090e17 100%)',
@@ -28,138 +28,717 @@ const surfaces: Record<string, string> = {
   emerald: 'radial-gradient(ellipse at 72% 28%, #5d8d7d 0%, #294b47 32%, #15262a 70%, #090d13 100%)',
 };
 
-function Visual({ project, className = '' }: { project: Project; className?: string }) {
+function Visual({
+  project,
+  coverKey,
+  className = '',
+  fill = false,
+  showWatermark = true,
+  imagesReady = true,
+}: {
+  project: Project;
+  coverKey?: string;
+  className?: string;
+  fill?: boolean;
+  showWatermark?: boolean;
+  imagesReady?: boolean;
+}) {
+  const imageSrc = resolveWorkAsset(coverKey);
+  const positionClass = fill ? 'absolute inset-0' : 'relative';
+
+  if (imageSrc) {
+    return (
+      <div
+        className={`${positionClass} isolate overflow-hidden ${className}`}
+        style={{ background: surfaces[project.mood] ?? surfaces.violet }}
+      >
+        {imagesReady && (
+          <img
+            src={imageSrc}
+            alt={project.title}
+            decoding="sync"
+            className="h-full w-full object-cover object-center"
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#070b12]/80 via-black/15 to-black/30" />
+        {showWatermark && (
+          <span className="absolute bottom-5 right-6 font-mono text-[9px] tracking-[.28em] text-white/45">
+            YS / {project.id}
+          </span>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className={`relative isolate overflow-hidden ${className}`} style={{ background: surfaces[project.mood] }}>
-      <div className="absolute inset-0 opacity-60" style={{ background: 'linear-gradient(115deg,transparent 18%,rgba(255,255,255,.13) 48%,transparent 66%)' }} />
+    <div
+      className={`${positionClass} isolate overflow-hidden ${className}`}
+      style={{ background: surfaces[project.mood] ?? surfaces.violet }}
+    >
+      <div
+        className="absolute inset-0 opacity-60"
+        style={{ background: 'linear-gradient(115deg,transparent 18%,rgba(255,255,255,.13) 48%,transparent 66%)' }}
+      />
       <div className="absolute -right-[12%] top-[4%] h-[82%] aspect-[.72] rounded-[48%] border border-white/20 bg-white/[.06] shadow-[0_0_100px_rgba(255,255,255,.08)]" />
       <div className="absolute right-[14%] top-[16%] h-[60%] aspect-[.72] rounded-[48%] border border-white/20 bg-black/10 backdrop-blur-[2px]" />
       <div className="absolute inset-0 bg-gradient-to-t from-[#070b12]/80 via-transparent to-black/10" />
-      <span className="absolute bottom-5 right-6 font-mono text-[9px] tracking-[.28em] text-white/45">YS / {project.id}</span>
+      {showWatermark && (
+        <span className="absolute bottom-5 right-6 font-mono text-[9px] tracking-[.28em] text-white/45">
+          YS / {project.id}
+        </span>
+      )}
     </div>
   );
 }
 
 export function WorkGallery({ onOpenProject }: { onOpenProject: (projectId: string) => void }) {
   const reduceMotion = useReducedMotion();
+  const [activeCategory, setActiveCategory] = useState<WorkNavCategory>('ALL WORK');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [active, setActive] = useState(0);
-  const project = projects[active];
-  const select = useCallback((index: number) => setActive((index + projects.length) % projects.length), []);
-  const move = useCallback((direction: number) => select(active + direction), [active, select]);
+  const [savedIds, setSavedIds] = useState<string[]>([]);
+  const railRef = useRef<HTMLDivElement | null>(null);
+
+  const preloadUrls = useMemo(
+    () => dedupeImageUrls(collectGalleryPreloadKeys(projects).map(resolveWorkAsset)),
+    []
+  );
+  const { ready, percent } = useImagePreloader(preloadUrls);
+
+  const visibleProjects = useMemo(
+    () => filterWorkProjects(activeCategory, searchQuery),
+    [activeCategory, searchQuery]
+  );
+
+  const safeIndex = visibleProjects.length > 0 ? Math.min(active, visibleProjects.length - 1) : 0;
+  const project = visibleProjects[safeIndex] ?? projects[0];
+  const heroSrc = resolveWorkAsset(project.workSectionHeroKey ?? project.heroCoverKey ?? project.cardCoverKey);
+  const isSaved = savedIds.includes(project.id);
+
+  const select = useCallback(
+    (index: number) => {
+      if (visibleProjects.length === 0) return;
+      const nextIndex = (index + visibleProjects.length) % visibleProjects.length;
+      setActive(nextIndex);
+      const rail = railRef.current;
+      const card = rail?.children[nextIndex] as HTMLElement | undefined;
+      card?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    },
+    [visibleProjects.length]
+  );
+
+  const move = useCallback((direction: number) => select(safeIndex + direction), [safeIndex, select]);
+
+  const handleCategoryChange = useCallback((category: WorkNavCategory) => {
+    setActiveCategory(category);
+    setActive(0);
+    if (railRef.current) {
+      railRef.current.scrollLeft = 0;
+    }
+  }, []);
+
+  const toggleSaved = useCallback((id: string) => {
+    setSavedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+  }, []);
+
+  const highlightMetric =
+    project.media.length > 0 ? `${project.media.length} Assets` : '98% Match';
 
   return (
-    <section aria-label="Selected work" className="work-exhibition relative flex h-full min-h-0 w-full overflow-hidden bg-[#090909] text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_48%,rgba(255,255,255,.055),transparent_62%)]" />
-      <aside className="relative z-20 hidden w-[76px] shrink-0 flex-col items-center border-r border-white/[.07] bg-black/35 pt-8 md:flex lg:w-[104px]">
-        <div className="mb-12 grid h-7 w-7 place-items-center rounded-full border border-white/25 text-[9px] font-bold tracking-tighter">YS</div>
-        <nav aria-label="Work categories" className="flex w-full flex-col gap-7 px-2">
-          {['HOME', '3D / CGI', 'MOTION', 'BRANDING', 'MY WORK'].map((item, i) => (
-            <button key={item} type="button" onClick={() => { if (i === 0 || i === 4) setActive(0); }} className={`text-center text-[7px] font-medium tracking-[.12em] transition-colors lg:text-[8px] ${i === 4 ? 'text-white' : 'text-white/40 hover:text-white/85'}`}>
-              {item}
-              {i === 4 && <span className="mx-auto mt-2 block h-px w-5 bg-[#e50914]" />}
-            </button>
-          ))}
+    <section
+      aria-label="Selected work"
+      aria-busy={!ready}
+      className="work-exhibition relative flex h-full min-h-0 w-full flex-col justify-between overflow-hidden bg-[#050608] text-white"
+    >
+      <AnimatePresence>
+        {!ready && (
+          <GalleryPreloader percent={percent} reduceMotion={Boolean(reduceMotion)} />
+        )}
+      </AnimatePresence>
+
+      {/* Full-width edge-to-edge cinematic hero backdrop */}
+      <AnimatePresence initial={false}>
+        <motion.div
+          key={project.id}
+          initial={reduceMotion ? false : { opacity: 0, scale: 1.015 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={reduceMotion ? undefined : { opacity: 0 }}
+          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          className="pointer-events-none absolute inset-0"
+        >
+          {ready && heroSrc ? (
+            <img
+              src={heroSrc}
+              alt=""
+              aria-hidden="true"
+              decoding="sync"
+              className="h-full w-full object-cover object-[68%_28%] sm:object-[64%_30%]"
+            />
+          ) : (
+            <div
+              className="h-full w-full"
+              style={{ background: surfaces[project.mood] ?? surfaces.violet }}
+            />
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Directional dark vignettes matching reference: crisp artwork on right, legible copy on left, seamless dark floor under MY WORK */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(5,6,8,0.92)_0%,rgba(5,6,8,0.72)_34%,rgba(5,6,8,0.20)_66%,rgba(5,6,8,0.38)_100%)]"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/55 via-transparent to-transparent"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,#050608_0%,#050608_31%,rgba(5,6,8,0.90)_46%,rgba(5,6,8,0.35)_64%,transparent_84%)]"
+      />
+
+      {/* Top streaming-style category bar + search & avatar */}
+      <div className="relative z-20 flex shrink-0 items-center justify-between gap-2 px-4 pt-4 pr-10 sm:gap-4 sm:px-10 sm:pt-5 sm:pr-14 lg:px-14 lg:pr-16">
+        <nav
+          aria-label="Work categories"
+          className="no-scrollbar flex min-w-0 flex-nowrap items-center gap-2.5 overflow-x-auto whitespace-nowrap sm:gap-8"
+        >
+          {WORK_NAV_CATEGORIES.map((category) => {
+            const isSelected = activeCategory === category;
+            return (
+              <button
+                key={category}
+                type="button"
+                onClick={() => handleCategoryChange(category)}
+                className={`shrink-0 text-[9px] font-semibold uppercase tracking-[0.09em] transition-colors sm:text-[11px] sm:tracking-[0.14em] ${
+                  isSelected ? 'text-white' : 'text-white/65 hover:text-white'
+                }`}
+              >
+                {category}
+              </button>
+            );
+          })}
         </nav>
-        <span className="mt-auto mb-8 font-mono text-[7px] tracking-[.22em] text-white/25 [writing-mode:vertical-rl]">INDEPENDENT VISUAL STORIES</span>
-      </aside>
 
-      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
-        <header className="flex h-[58px] shrink-0 items-center justify-between border-b border-white/[.07] px-5 sm:px-8 lg:px-12">
-          <div className="flex items-center gap-3 text-white/55"><span className="text-[8px] tracking-[.18em]">DISCOVER</span><span className="h-3 w-px bg-white/15" /><span className="text-[8px] tracking-[.18em]">SELECTED WORK</span></div>
-          <div className="absolute left-1/2 -translate-x-1/2 text-[15px] font-black tracking-[-.06em] text-[#e50914] sm:text-[18px]">YUVRAJ<span className="text-white">.</span></div>
-          <div className="flex items-center gap-2 text-[8px] tracking-[.12em] text-white/55"><span className="hidden sm:inline">VISUAL DESIGNER</span><span className="grid h-6 w-6 place-items-center rounded-full border border-white/20 text-[8px] text-white">YS</span></div>
-        </header>
-
-        <div className="relative flex min-h-0 flex-1 flex-col justify-center px-4 pb-7 pt-5 sm:px-7 lg:px-[5vw]">
-          <div className="mb-5 flex items-end justify-between gap-4 sm:mb-7">
-            <div><p className="mb-2 text-[8px] font-semibold tracking-[.3em] text-[#e50914]">YUVRAJ SINGH / PORTFOLIO</p><h2 className="text-xl font-semibold tracking-[-.04em] sm:text-2xl lg:text-[clamp(1.7rem,3vw,2.6rem)]">Featured collection</h2></div>
-            <div className="hidden items-center gap-2 text-[8px] tracking-[.2em] text-white/35 sm:flex"><span>01</span><span className="h-px w-9 bg-white/20" /><span>10 PROJECTS</span></div>
-          </div>
-
-          <div className="relative min-h-0 flex-1">
-            <div className="flex h-full items-center gap-2.5 overflow-x-auto overflow-y-hidden pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-3 lg:gap-4">
-              {projects.map((item, index) => (
-                <motion.button key={item.id} type="button" onMouseEnter={() => select(index)} onFocus={() => select(index)} onClick={() => onOpenProject(item.id)} initial={reduceMotion ? false : { opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .45, delay: index * .035 }} aria-label={`Explore ${item.title}`} aria-current={index === active ? 'true' : undefined} className={`group relative h-[min(55vh,430px)] min-h-[230px] w-[clamp(112px,15vw,190px)] shrink-0 overflow-hidden bg-[#151515] text-left transition-all duration-500 ${index === active ? 'scale-[1.025] opacity-100' : 'opacity-65 hover:opacity-100'}`}>
-                  <Visual project={item} className="absolute inset-0 transition-transform duration-700 group-hover:scale-110" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/15 to-black/5" />
-                  <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/25 to-transparent" />
-                  <span className="absolute left-3 top-3 font-mono text-[8px] tracking-[.18em] text-white/65">{item.id} / YS</span>
-                  <div className="absolute inset-x-3 bottom-4">
-                    <p className="mb-2 text-[7px] font-semibold tracking-[.18em] text-white/55">{item.category}</p>
-                    <h3 className="line-clamp-3 text-[clamp(.78rem,1.2vw,1rem)] font-semibold leading-[1.08] tracking-[-.035em]">{item.title}</h3>
-                    <span className={`mt-3 block h-[2px] transition-all duration-300 ${index === active ? 'w-full bg-[#e50914]' : 'w-5 bg-white/45 group-hover:w-10'}`} />
-                  </div>
-                  {index === active && <span className="pointer-events-none absolute inset-0 border border-white/65" />}
-                </motion.button>
-              ))}
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+          {searchOpen && (
+            <div className="flex items-center border-b border-white/40 bg-black/40 px-2 py-1 backdrop-blur-sm">
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setActive(0);
+                }}
+                placeholder="Filter work..."
+                aria-label="Filter projects"
+                className="w-24 bg-transparent text-xs text-white placeholder:text-white/45 focus:outline-none sm:w-40"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  aria-label="Clear search"
+                  onClick={() => setSearchQuery('')}
+                  className="ml-1 text-white/60 hover:text-white"
+                >
+                  <X size={12} />
+                </button>
+              )}
             </div>
-          </div>
+          )}
 
-          <div className="mt-3 flex shrink-0 items-center justify-between border-t border-white/[.1] pt-4 sm:mt-5">
-            <div className="min-w-0 pr-4"><p className="text-[7px] tracking-[.24em] text-white/35">NOW SELECTED</p><p className="mt-1 truncate text-xs font-medium tracking-wide sm:text-sm">{project.title}</p></div>
-            <div className="flex shrink-0 items-center gap-2">
-              <button type="button" aria-label="Previous project" onClick={() => move(-1)} className="grid h-8 w-8 place-items-center border border-white/20 text-white/70 transition hover:border-white hover:bg-white/10"><ArrowLeft size={13} /></button>
-              <button type="button" aria-label="Next project" onClick={() => move(1)} className="grid h-8 w-8 place-items-center border border-white/20 text-white/70 transition hover:border-white hover:bg-white/10"><ArrowRight size={13} /></button>
-              <button type="button" onClick={() => onOpenProject(project.id)} className="ml-1 inline-flex h-8 items-center gap-2 bg-[#e50914] px-3 text-[8px] font-bold tracking-[.14em] transition hover:bg-[#ff1824] sm:px-5">EXPLORE <ArrowUpRight size={12} /></button>
-            </div>
+          <button
+            type="button"
+            aria-label={searchOpen ? 'Close search' : 'Search work'}
+            aria-expanded={searchOpen}
+            onClick={() => {
+              setSearchOpen((prev) => {
+                if (prev) setSearchQuery('');
+                return !prev;
+              });
+            }}
+            className="grid h-8 w-8 place-items-center text-white/85 transition hover:text-white"
+          >
+            <Search size={17} strokeWidth={2} />
+          </button>
+
+          <span
+            aria-label="Yuvraj Singh profile"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/30 bg-gradient-to-br from-[#7c1fff]/85 to-[#1e1b4b] text-[10px] font-bold tracking-wider text-white shadow-sm"
+          >
+            YS
+          </span>
+        </div>
+      </div>
+
+      {/* Featured hero title, metadata, and purple PLAY/EXPLORE CTA */}
+      <div className="relative z-20 my-auto max-w-3xl px-5 py-4 sm:px-10 lg:px-14">
+        <h2 className="max-w-[14ch] text-[clamp(2rem,4.4vw,3.85rem)] font-extrabold uppercase leading-[0.98] tracking-[-0.02em] text-white drop-shadow-[0_6px_28px_rgba(0,0,0,0.65)]">
+          {project.title}
+        </h2>
+
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-[13px]">
+          <span className="text-white/80">{project.type}</span>
+          <span className="font-semibold text-[#34d399]">{highlightMetric}</span>
+          <span className="font-semibold text-white/95">{project.year}</span>
+        </div>
+
+        <div className="mt-5 flex items-center gap-3.5">
+          <button
+            type="button"
+            onClick={() => onOpenProject(project.id)}
+            className="inline-flex h-10 items-center justify-center rounded-full bg-[#7c1fff] px-8 text-[11px] font-bold uppercase tracking-[0.16em] text-white shadow-[0_8px_28px_rgba(124,31,255,0.45)] transition hover:bg-[#8d3aff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          >
+            EXPLORE
+          </button>
+
+          <button
+            type="button"
+            aria-label={isSaved ? `Remove ${project.title} from saved` : `Save ${project.title}`}
+            aria-pressed={isSaved}
+            onClick={() => toggleSaved(project.id)}
+            className={`grid h-10 w-10 place-items-center rounded-full border transition ${
+              isSaved
+                ? 'border-[#34d399] bg-[#34d399]/15 text-[#34d399]'
+                : 'border-white/65 bg-black/25 text-white hover:border-white hover:bg-white/15'
+            }`}
+          >
+            {isSaved ? <Check size={16} strokeWidth={2.5} /> : <Plus size={18} strokeWidth={2} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Bottom full-width MY WORK poster rail bleeding to the right edge */}
+      <div className="relative z-20 shrink-0 pb-5 sm:pb-7">
+        <div className="mb-3 flex items-center justify-between px-5 pr-12 sm:px-10 sm:pr-14 lg:px-14 lg:pr-16">
+          <h3 className="text-xs font-bold uppercase tracking-[0.08em] text-white sm:text-sm">
+            MY WORK
+          </h3>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-label="Previous project"
+              onClick={() => move(-1)}
+              className="grid h-7 w-7 place-items-center rounded-full border border-white/20 bg-black/40 text-white/75 transition hover:border-white hover:text-white"
+            >
+              <ArrowLeft size={12} />
+            </button>
+            <button
+              type="button"
+              aria-label="Next project"
+              onClick={() => move(1)}
+              className="grid h-7 w-7 place-items-center rounded-full border border-white/20 bg-black/40 text-white/75 transition hover:border-white hover:text-white"
+            >
+              <ArrowRight size={12} />
+            </button>
           </div>
         </div>
-        <footer className="flex h-6 shrink-0 items-center justify-between border-t border-white/[.06] px-5 text-[7px] tracking-[.18em] text-white/25 sm:px-8 lg:px-12"><span>YUVRAJ SINGH / VISUAL DESIGNER</span><span>COLLECTION · 2026</span></footer>
+
+        {visibleProjects.length > 0 ? (
+          <div
+            ref={railRef}
+            className="flex w-full items-center gap-3 overflow-x-auto overflow-y-hidden pl-5 pr-6 pb-1.5 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4 sm:pl-10 sm:pr-10 lg:pl-14 lg:pr-14"
+          >
+            {visibleProjects.map((item, index) => {
+              const isSelected = index === safeIndex;
+              return (
+                <motion.button
+                  key={item.id}
+                  type="button"
+                  onMouseEnter={() => setActive(index)}
+                  onFocus={() => setActive(index)}
+                  onClick={() => onOpenProject(item.id)}
+                  whileHover={reduceMotion ? undefined : { scale: 1.02 }}
+                  whileTap={reduceMotion ? undefined : { scale: 0.99 }}
+                  transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                  aria-label={`Explore ${item.title}`}
+                  aria-current={isSelected ? 'true' : undefined}
+                  className={`group relative aspect-[2/3] w-[124px] shrink-0 overflow-hidden rounded-[3px] bg-[#14161d] text-left transition-[opacity,box-shadow] duration-300 sm:w-[146px] lg:w-[164px] xl:w-[174px] ${
+                    isSelected
+                      ? 'opacity-100 ring-2 ring-white shadow-[0_14px_34px_rgba(0,0,0,0.85)]'
+                      : 'opacity-85 hover:opacity-100'
+                  }`}
+                >
+                  <Visual
+                    project={item}
+                    coverKey={item.cardCoverKey}
+                    fill
+                    showWatermark={false}
+                    imagesReady={ready}
+                    className="transition-transform duration-500 group-hover:scale-105"
+                  />
+                  {!item.cardCoverKey && (
+                    <>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/25" />
+                      <span className="absolute left-3 top-3 font-mono text-[9px] tracking-[.2em] text-white/70">
+                        {item.id}
+                      </span>
+                      <div className="absolute inset-x-3 bottom-3.5">
+                        <p className="mb-1 text-[7px] font-semibold uppercase tracking-[.16em] text-white/65">
+                          {item.category}
+                        </p>
+                        <h4 className="line-clamp-3 text-xs font-bold uppercase leading-[1.12] tracking-[0.02em] [word-spacing:0.08em] text-white sm:text-sm">
+                          {item.title}
+                        </h4>
+                      </div>
+                    </>
+                  )}
+                </motion.button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="px-5 py-8 text-xs text-white/60 sm:px-10 lg:px-14">
+            No matching projects found.{' '}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveCategory('ALL WORK');
+                setSearchQuery('');
+              }}
+              className="underline hover:text-white"
+            >
+              Reset filter
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );
 }
 
-export function ProjectDetailPage({ projectId, onBack, onNext }: { projectId: string; onBack: () => void; onNext: (projectId: string) => void }) {
-  const index = Math.max(0, projects.findIndex((item) => item.id === projectId));
-  const project = projects[index];
-  const nextProject = projects[(index + 1) % projects.length];
+function MediaCard({
+  item,
+  index,
+  onOpen,
+}: {
+  item: ProjectMedia;
+  index: number;
+  onOpen: (idx: number) => void;
+}) {
+  const reduceMotion = useReducedMotion();
+  const src = resolveWorkAsset(item.assetKey);
+  const { wrapper, frame } = getMediaGridClasses(item.aspect);
+  const useContain = item.kind === 'video' || item.aspect === 'panoramic';
+  const indexLabel = String(index + 1).padStart(2, '0');
+
+  return (
+    <article className={`group ${wrapper}`}>
+      <motion.button
+        type="button"
+        onClick={() => onOpen(index)}
+        whileHover={reduceMotion ? undefined : { scale: 1.02 }}
+        whileTap={reduceMotion ? undefined : { scale: 0.99 }}
+        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+        aria-label={`Inspect ${item.caption}`}
+        className={`relative block w-full overflow-hidden border border-white/10 bg-[#05080f] text-left transition-colors hover:border-white/35 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${frame}`}
+      >
+        {src && item.kind === 'video' ? (
+          <video
+            src={src}
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="metadata"
+            className="h-full w-full object-contain bg-[#04060c] transition-transform duration-700 group-hover:scale-[1.02]"
+          />
+        ) : src ? (
+          <img
+            src={src}
+            alt={item.caption}
+            decoding="async"
+            className={`h-full w-full transition-transform duration-700 group-hover:scale-[1.035] ${
+              useContain ? 'object-contain bg-[#0b0e14]' : 'object-cover object-center'
+            }`}
+          />
+        ) : null}
+
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/15 opacity-85 transition-opacity group-hover:opacity-100" />
+        <span className="pointer-events-none absolute left-4 top-4 font-mono text-[9px] tracking-[.22em] text-white/75">
+          {indexLabel}
+        </span>
+        <span className="pointer-events-none absolute right-4 top-4 inline-flex items-center gap-1.5 border border-white/20 bg-black/55 px-2.5 py-1 font-mono text-[8px] tracking-[.18em] text-white/85 backdrop-blur-sm">
+          {item.kind === 'video' ? <Play size={10} /> : <Maximize2 size={10} />}
+          {item.tag}
+        </span>
+      </motion.button>
+      <div className="mt-3 flex items-baseline justify-between gap-3">
+        <p className="text-xs font-medium tracking-wide text-white/85">{item.caption}</p>
+        <span className="shrink-0 font-mono text-[9px] tracking-[.18em] text-white/40">{indexLabel}</span>
+      </div>
+    </article>
+  );
+}
+
+function MediaLightbox({
+  media,
+  activeIndex,
+  onClose,
+  onChangeIndex,
+}: {
+  media: ProjectMedia[];
+  activeIndex: number;
+  onClose: () => void;
+  onChangeIndex: (nextIndex: number) => void;
+}) {
+  const current = media[activeIndex];
+  const src = resolveWorkAsset(current.assetKey);
 
   useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        onChangeIndex((activeIndex + 1) % media.length);
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        onChangeIndex((activeIndex - 1 + media.length) % media.length);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [activeIndex, media.length, onChangeIndex, onClose]);
+
+  if (!src) return null;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={current.caption}
+      className="fixed inset-0 z-[90] flex flex-col bg-black/92 p-4 backdrop-blur-md sm:p-8"
+      onClick={onClose}
+    >
+      <div
+        className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 pb-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] tracking-[.22em] text-white/50">
+            {String(activeIndex + 1).padStart(2, '0')} / {String(media.length).padStart(2, '0')} · {current.tag}
+          </p>
+          <h3 className="mt-1 truncate text-sm font-medium text-white sm:text-base">{current.caption}</h3>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            aria-label="Previous media"
+            onClick={() => onChangeIndex((activeIndex - 1 + media.length) % media.length)}
+            className="grid h-9 w-9 place-items-center border border-white/25 bg-white/[.04] text-white transition hover:border-white hover:bg-white/10"
+          >
+            <ArrowLeft size={15} />
+          </button>
+          <button
+            type="button"
+            aria-label="Next media"
+            onClick={() => onChangeIndex((activeIndex + 1) % media.length)}
+            className="grid h-9 w-9 place-items-center border border-white/25 bg-white/[.04] text-white transition hover:border-white hover:bg-white/10"
+          >
+            <ArrowRight size={15} />
+          </button>
+          <button
+            type="button"
+            aria-label="Close lightbox"
+            onClick={onClose}
+            className="grid h-9 w-9 place-items-center border border-white/25 bg-white/[.04] text-white transition hover:border-white hover:bg-white/10"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      </div>
+
+      <div
+        className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 items-center justify-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {current.kind === 'video' ? (
+          <video
+            key={current.id}
+            src={src}
+            controls
+            autoPlay
+            loop
+            playsInline
+            className="max-h-[80vh] max-w-full border border-white/15 bg-black shadow-2xl"
+          />
+        ) : (
+          <img
+            key={current.id}
+            src={src}
+            alt={current.caption}
+            className="max-h-[80vh] max-w-full border border-white/15 bg-[#070a10] object-contain shadow-2xl"
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function ProjectDetailPage({
+  projectId,
+  onBack,
+  onNext,
+}: {
+  projectId: string;
+  onBack: () => void;
+  onNext: (projectId: string) => void;
+}) {
+  const index = Math.max(0, projects.findIndex((item) => item.id === projectId));
+  const project = getProjectById(projectId);
+  const nextProject = projects[(index + 1) % projects.length];
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const logoSrc = project.logoOnDark ? resolveWorkAsset(project.logoKey) : undefined;
+  const hasRealMedia = project.media.length > 0;
+  const totalCount = hasRealMedia ? project.media.length : project.frames.length;
+
+  useEffect(() => {
+    setLightboxIndex(null);
     window.scrollTo({ top: 0, behavior: 'instant' });
     const previous = document.body.style.backgroundColor;
     document.body.style.backgroundColor = '#080d14';
-    return () => { document.body.style.backgroundColor = previous; };
+    return () => {
+      document.body.style.backgroundColor = previous;
+    };
   }, [projectId]);
 
   return (
     <main key={project.id} className="min-h-screen bg-[#080d14] pt-16 text-white">
       <section className="grid min-h-[calc(100svh-4rem)] grid-cols-1 lg:grid-cols-[.9fr_1.1fr]">
         <div className="relative flex flex-col justify-center px-6 py-14 sm:px-12 lg:px-[7vw] lg:py-20">
-          <button type="button" onClick={onBack} className="mb-12 inline-flex w-fit items-center gap-2 text-[9px] tracking-[.2em] text-white/55 transition hover:text-white"><ArrowLeft size={14} /> BACK TO COLLECTION</button>
-          <p className="mb-5 text-[9px] font-semibold tracking-[.28em]" style={{ color: project.accent }}>{project.category}</p>
-          <h1 className="max-w-[13ch] text-[clamp(2.5rem,5.5vw,5.5rem)] font-semibold leading-[.96] tracking-[-.065em]">{project.title}</h1>
-          <p className="mt-7 max-w-xl text-sm leading-7 text-white/60">{project.description}</p>
-          <div className="mt-10 grid max-w-lg grid-cols-3 border-y border-white/10 py-5">
-            <div><p className="text-[8px] tracking-[.2em] text-white/35">YEAR</p><p className="mt-2 text-sm">{project.year}</p></div>
-            <div><p className="text-[8px] tracking-[.2em] text-white/35">DISCIPLINE</p><p className="mt-2 text-xs text-white/75">{project.type}</p></div>
-            <div><p className="text-[8px] tracking-[.2em] text-white/35">ROLE</p><p className="mt-2 text-xs text-white/75">ART DIRECTION</p></div>
+          <button
+            type="button"
+            onClick={onBack}
+            className="mb-10 inline-flex w-fit items-center gap-2 text-[9px] tracking-[.2em] text-white/55 transition hover:text-white"
+          >
+            <ArrowLeft size={14} /> BACK TO COLLECTION
+          </button>
+
+          {logoSrc && (
+            <img
+              src={logoSrc}
+              alt={`${project.shortTitle ?? project.title} wordmark`}
+              className="mb-6 h-9 w-auto object-contain object-left opacity-95 sm:h-11"
+            />
+          )}
+
+          <p className="mb-4 text-[9px] font-semibold tracking-[.28em]" style={{ color: project.accent }}>
+            {project.category}
+          </p>
+          <h1 className="max-w-[14ch] text-[clamp(2.3rem,5vw,5rem)] font-semibold leading-[.98] tracking-[-.055em]">
+            {project.title}
+          </h1>
+          <p className="mt-7 max-w-xl text-sm leading-7 text-white/65">{project.description}</p>
+          <div className="mt-10 grid max-w-lg grid-cols-3 gap-4 border-y border-white/10 py-5 sm:gap-6">
+            <div>
+              <p className="text-[8px] tracking-[.2em] text-white/35">YEAR</p>
+              <p className="mt-2 text-sm">{project.year}</p>
+            </div>
+            <div>
+              <p className="text-[8px] tracking-[.2em] text-white/35">DISCIPLINE</p>
+              <p className="mt-2 text-xs text-white/80">{project.type}</p>
+            </div>
+            <div>
+              <p className="text-[8px] tracking-[.2em] text-white/35">ROLE</p>
+              <p className="mt-2 text-xs text-white/80">{project.role}</p>
+            </div>
           </div>
-          <button type="button" onClick={() => onNext(nextProject.id)} className="mt-10 inline-flex w-fit items-center gap-3 border border-white/25 px-5 py-3 text-[9px] font-semibold tracking-[.2em] text-white/85 transition hover:border-white/70 hover:bg-white/[.08]">NEXT PROJECT <ArrowRight size={14} /></button>
+          <button
+            type="button"
+            onClick={() => onNext(nextProject.id)}
+            className="mt-10 inline-flex w-fit items-center gap-3 border border-white/25 px-5 py-3 text-[9px] font-semibold tracking-[.2em] text-white/85 transition hover:border-white/70 hover:bg-white/[.08]"
+          >
+            NEXT PROJECT <ArrowRight size={14} />
+          </button>
         </div>
+
         <div className="relative min-h-[55svh] overflow-hidden border-y border-white/[.08] lg:min-h-0 lg:border-l lg:border-y-0">
-          <Visual project={project} className="absolute inset-0" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#080d14]/65 via-transparent to-black/10" />
-          <div className="absolute bottom-7 right-7 text-right"><p className="text-[8px] tracking-[.25em] text-white/55">PROJECT COVER / {project.year}</p><p className="mt-2 text-xs tracking-widest text-white">{project.id} — {project.category}</p></div>
+          <Visual
+            project={project}
+            coverKey={project.heroCoverKey ?? project.cardCoverKey}
+            fill
+            showWatermark={false}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#080d14]/75 via-transparent to-black/15" />
+          <div className="absolute bottom-7 right-7 text-right">
+            <p className="text-[8px] tracking-[.25em] text-white/65">PROJECT COVER / {project.year}</p>
+            <p className="mt-2 text-xs tracking-widest text-white">
+              {project.id} — {project.category}
+            </p>
+          </div>
         </div>
       </section>
+
       <section className="mx-auto max-w-[1600px] px-6 py-16 sm:px-12 lg:px-[7vw] lg:py-24">
-        <div className="mb-9 flex flex-wrap items-end justify-between gap-4"><div><p className="text-[9px] font-semibold tracking-[.25em] text-white/40">SELECTED WORK</p><h2 className="mt-3 text-2xl font-medium tracking-tight sm:text-3xl">Project gallery</h2></div><span className="text-[9px] tracking-[.2em] text-white/35">01 — 0{project.frames.length}</span></div>
-        <div className="grid grid-cols-2 auto-rows-[110px] gap-3 sm:auto-rows-[150px] sm:gap-5 lg:grid-cols-12 lg:auto-rows-[92px]">
-          {project.frames.map((frame, i) => {
-            const layouts = ['col-span-2 row-span-3 lg:col-span-5 lg:row-span-5', 'col-span-1 row-span-2 lg:col-span-4 lg:row-span-3 lg:mt-10', 'col-span-1 row-span-2 lg:col-span-3 lg:row-span-4 lg:mt-20'];
-            return <article key={frame} className={`group ${layouts[i % layouts.length]}`}>
-              <div className="relative h-full min-h-0 overflow-hidden border border-white/10">
-                <Visual project={project} className="h-full w-full transition-transform duration-700 group-hover:scale-[1.045]" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent" />
-                <span className="absolute bottom-4 left-4 font-mono text-[9px] tracking-widest text-white/75">0{i + 1}</span>
-              </div>
-              <p className="mt-3 text-[9px] tracking-[.14em] text-white/60">{frame}</p>
-            </article>;
-          })}
+        <div className="mb-9 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-[9px] font-semibold tracking-[.25em] text-white/40">SELECTED WORK</p>
+            <h2 className="mt-3 text-2xl font-medium tracking-tight sm:text-3xl">Project gallery</h2>
+          </div>
+          <span className="font-mono text-[10px] tracking-[.2em] text-white/45">
+            01 — {String(totalCount).padStart(2, '0')}
+          </span>
         </div>
-        <div className="mt-16 flex flex-wrap items-center justify-between gap-5 border-t border-white/10 pt-8"><button type="button" onClick={onBack} className="inline-flex items-center gap-2 text-[9px] tracking-[.2em] text-white/55 transition hover:text-white"><ArrowLeft size={14} /> BACK TO COLLECTION</button><button type="button" onClick={() => onNext(nextProject.id)} className="inline-flex items-center gap-3 border border-white/25 px-5 py-3 text-[9px] font-semibold tracking-[.2em] text-white/85 transition hover:border-white/70 hover:bg-white/[.08]">NEXT PROJECT <ArrowRight size={14} /></button></div>
+
+        {hasRealMedia ? (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-12 lg:gap-7">
+            {project.media.map((item, i) => (
+              <MediaCard key={item.id} item={item} index={i} onOpen={setLightboxIndex} />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 auto-rows-[110px] gap-3 sm:auto-rows-[150px] sm:gap-5 lg:grid-cols-12 lg:auto-rows-[92px]">
+            {project.frames.map((frame, i) => {
+              const layouts = [
+                'col-span-2 row-span-3 lg:col-span-5 lg:row-span-5',
+                'col-span-1 row-span-2 lg:col-span-4 lg:row-span-3 lg:mt-10',
+                'col-span-1 row-span-2 lg:col-span-3 lg:row-span-4 lg:mt-20',
+              ];
+              return (
+                <article key={frame} className={`group ${layouts[i % layouts.length]}`}>
+                  <div className="relative h-full min-h-0 overflow-hidden border border-white/10">
+                    <Visual project={project} className="h-full w-full transition-transform duration-700 group-hover:scale-[1.045]" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent" />
+                    <span className="absolute bottom-4 left-4 font-mono text-[9px] tracking-widest text-white/75">
+                      0{i + 1}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-[9px] tracking-[.14em] text-white/60">{frame}</p>
+                </article>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="mt-16 flex flex-wrap items-center justify-between gap-5 border-t border-white/10 pt-8">
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex items-center gap-2 text-[9px] tracking-[.2em] text-white/55 transition hover:text-white"
+          >
+            <ArrowLeft size={14} /> BACK TO COLLECTION
+          </button>
+          <button
+            type="button"
+            onClick={() => onNext(nextProject.id)}
+            className="inline-flex items-center gap-3 border border-white/25 px-5 py-3 text-[9px] font-semibold tracking-[.2em] text-white/85 transition hover:border-white/70 hover:bg-white/[.08]"
+          >
+            NEXT PROJECT <ArrowRight size={14} />
+          </button>
+        </div>
       </section>
+
+      {hasRealMedia && lightboxIndex !== null && (
+        <MediaLightbox
+          media={project.media}
+          activeIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onChangeIndex={setLightboxIndex}
+        />
+      )}
     </main>
   );
 }

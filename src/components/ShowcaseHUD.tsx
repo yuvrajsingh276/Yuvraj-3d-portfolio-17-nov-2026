@@ -1,102 +1,94 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { X } from 'lucide-react';
 import type { ToolSpec } from '../scene/showcaseLogic';
 
 interface ShowcaseHUDProps {
   hoveredTool: ToolSpec | null;
-  selectedTool: ToolSpec | null;
+  hoverAnchorRef: React.RefObject<HTMLDivElement | null>;
+  latestAnchorRef: React.RefObject<{ x: number; y: number } | null>;
   contextLost: boolean;
-  onResetView: () => void;
 }
 
 const HUD_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
 export const ShowcaseHUD: React.FC<ShowcaseHUDProps> = ({
   hoveredTool,
-  selectedTool,
+  hoverAnchorRef,
+  latestAnchorRef,
   contextLost,
-  onResetView,
 }) => {
-  const activeInspect = selectedTool ?? hoveredTool;
+  React.useLayoutEffect(() => {
+    const el = hoverAnchorRef.current;
+    const anchor = latestAnchorRef.current;
+    if (el && anchor) {
+      el.style.transform = `translate3d(${anchor.x.toFixed(1)}px, ${anchor.y.toFixed(1)}px, 0) translate(-50%, -100%)`;
+    }
+  }, [hoveredTool?.id, hoverAnchorRef, latestAnchorRef]);
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-10 flex flex-col justify-end p-3 sm:p-5">
-
+    <div className="pointer-events-none fixed inset-0 z-20">
       {/* WebGL Context Lost Fallback */}
       <AnimatePresence>
         {contextLost && (
-          <motion.div
-            key="hud-context-lost"
-            role="alert"
-            initial={{ opacity: 0, scale: 0.96, y: 12 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 8 }}
-            transition={{ duration: 0.35, ease: HUD_EASE }}
-            className="pointer-events-auto mx-auto max-w-md rounded-2xl border border-amber-400/30 bg-[#121622] p-5 text-center shadow-2xl"
-          >
-            <p className="text-sm font-semibold text-slate-100">
-              3D Rendering Context Interrupted
-            </p>
-            <p className="mt-1.5 text-xs text-slate-400">
-              Your browser paused WebGL rendering. Reload the page to restore the 3D orbital stage.
-            </p>
-          </motion.div>
+          <div className="flex h-full w-full items-end justify-center p-4 sm:p-6">
+            <motion.div
+              key="hud-context-lost"
+              role="alert"
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ duration: 0.35, ease: HUD_EASE }}
+              className="pointer-events-auto max-w-md rounded-2xl border border-amber-400/30 bg-[#121622] p-5 text-center shadow-2xl"
+            >
+              <p className="text-sm font-semibold text-slate-100">
+                3D Rendering Context Interrupted
+              </p>
+              <p className="mt-1.5 text-xs text-slate-400">
+                Your browser paused WebGL rendering. Reload the page to restore the 3D orbital stage.
+              </p>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
-      {/* Compact Hover / Selection Detail Readout */}
-      <div className="pointer-events-none flex flex-col items-center gap-2">
+      {/* Small floating tool name + role label anchored smoothly over the hovered orbiting icon */}
+      <div
+        ref={hoverAnchorRef}
+        style={{ willChange: 'transform' }}
+        className="pointer-events-none fixed left-0 top-0"
+      >
         <AnimatePresence mode="wait">
-          {activeInspect && (
+          {hoveredTool && (
             <motion.div
-              key={`${activeInspect.id}-${selectedTool ? 'selected' : 'hover'}`}
+              key={hoveredTool.id}
               role="status"
               aria-live="polite"
-              initial={{ opacity: 0, y: 16, scale: 0.97 }}
+              data-testid="tool-hover-label"
+              initial={{ opacity: 0, y: 6, scale: 0.94 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.97 }}
-              transition={{ duration: 0.32, ease: HUD_EASE }}
-              style={{ borderColor: `${activeInspect.accentHex}38` }}
-              className="pointer-events-auto w-full max-w-[min(640px,94vw)] rounded-xl border bg-[#0b0f19]/92 px-4 py-2.5 shadow-xl"
+              exit={{ opacity: 0, y: 4, scale: 0.95 }}
+              transition={{ duration: 0.16, ease: HUD_EASE }}
+              style={{
+                borderColor: `${hoveredTool.accentHex}55`,
+                boxShadow: `0 10px 28px rgba(5, 4, 18, 0.72), 0 0 18px ${hoveredTool.accentHex}26`,
+              }}
+              className="flex items-center gap-2 rounded-xl border bg-[#0c0a22]/90 px-3 py-1.5 backdrop-blur-md"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm transition-transform duration-300"
-                      style={{ backgroundColor: activeInspect.accentHex }}
-                      aria-hidden="true"
-                    />
-                    <h2 className="text-sm font-semibold text-slate-50 truncate">
-                      {activeInspect.name}
-                    </h2>
-                    <span className="text-xs text-slate-400 whitespace-nowrap">
-                      · {activeInspect.category}
-                    </span>
-                  </div>
-                  {selectedTool ? (
-                    <p className="mt-1 text-xs leading-relaxed text-slate-300">
-                      {selectedTool.summary}{' '}
-                      <span className="text-slate-400">{selectedTool.craftNote}</span>
-                    </p>
-                  ) : (
-                    <p className="mt-0.5 text-xs text-slate-400 truncate">
-                      {activeInspect.craftNote} · Click to inspect
-                    </p>
-                  )}
-                </div>
-
-                {selectedTool && (
-                  <button
-                    type="button"
-                    onClick={onResetView}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-300 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-sky-400"
-                    aria-label="Close inspection and reset camera"
-                  >
-                    <X className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                )}
+              <span
+                aria-hidden="true"
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{
+                  backgroundColor: hoveredTool.accentHex,
+                  boxShadow: `0 0 8px ${hoveredTool.accentHex}`,
+                }}
+              />
+              <div className="flex flex-col leading-none">
+                <span className="whitespace-nowrap text-[12px] font-semibold tracking-[0.01em] text-white">
+                  {hoveredTool.name}
+                </span>
+                <span className="mt-0.5 whitespace-nowrap text-[10.5px] font-medium tracking-[0.02em] text-indigo-200/80">
+                  {hoveredTool.role}
+                </span>
               </div>
             </motion.div>
           )}

@@ -31,6 +31,8 @@ const HERO_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 export default function App() {
   const canvasMountRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<ShowcaseStage | null>(null);
+  const hoverLabelRef = useRef<HTMLDivElement | null>(null);
+  const latestHoverAnchorRef = useRef<{ x: number; y: number } | null>(null);
 
   const [hoveredTool, setHoveredTool] = useState<ToolSpec | null>(null);
   const [selectedTool, setSelectedTool] = useState<ToolSpec | null>(null);
@@ -58,6 +60,12 @@ export default function App() {
     try {
       stage = new ShowcaseStage(container, {
         onHoverChange: (tool) => setHoveredTool(tool),
+        onHoverAnchorChange: (anchor) => {
+          latestHoverAnchorRef.current = anchor;
+          const el = hoverLabelRef.current;
+          if (!el || !anchor) return;
+          el.style.transform = `translate3d(${anchor.x.toFixed(1)}px, ${anchor.y.toFixed(1)}px, 0) translate(-50%, -100%)`;
+        },
         onSelectChange: (tool) => setSelectedTool(tool),
         onContextLostChange: (lost) => setContextLost(lost),
       });
@@ -79,10 +87,6 @@ export default function App() {
       stageRef.current?.setMotionPaused(next);
       return next;
     });
-  }, []);
-
-  const handleResetView = useCallback(() => {
-    stageRef.current?.resetView();
   }, []);
 
   useEffect(() => {
@@ -165,18 +169,19 @@ export default function App() {
     }
   }, [projectId, scrollToSection]);
 
-  const activeTheme = SECTION_THEMES[activeSection];
+  const currentSection: PageSectionId = projectId ? 'work' : activeSection;
+  const activeTheme = SECTION_THEMES[currentSection];
 
   return (
     <MotionConfig reducedMotion="user">
-      <div id="home" className={`relative isolate flow-root min-h-screen bg-[#010207] ${projectId ? "min-h-0 overflow-x-hidden" : ""}`}>
+      <div id="home" className={`relative isolate flow-root min-h-screen bg-[#0a091d] ${projectId ? "min-h-0 overflow-x-hidden" : ""}`}>
       {!projectId && <>
       <main
         onPointerMove={(e) => {
           e.currentTarget.style.setProperty('--pointer-x', e.clientX + 'px');
           e.currentTarget.style.setProperty('--pointer-y', e.clientY + 'px');
         }}
-        className="fixed inset-0 z-0 h-screen w-screen overflow-hidden bg-[#010207]"
+        className="fixed inset-0 z-0 h-screen w-screen overflow-hidden bg-[#0a091d]"
         data-selected-tool={selectedTool?.id ?? 'none'}
         data-hovered-tool={hoveredTool?.id ?? 'none'}
         data-motion-paused={String(motionPaused)}
@@ -194,17 +199,17 @@ export default function App() {
           aria-hidden="true"
           className="pointer-events-none fixed inset-0 z-[3]"
           style={{
-            background: 'radial-gradient(460px circle at var(--pointer-x, 50%) var(--pointer-y, 50%), rgba(139, 92, 246, 0.14), transparent 64%)',
+            background: 'radial-gradient(460px circle at var(--pointer-x, 50%) var(--pointer-y, 50%), rgba(167, 139, 250, 0.13), transparent 64%)',
             mixBlendMode: 'screen',
           }}
         />
 
-        {/* Centralized Golden Ratio hero typography aligned inside orbital ring */}
+        {/* Upper-aligned Hero typography positioned cleanly above the 3D orbital constellation */}
         <AnimatePresence>
           <motion.section
             key="hero-profile-layer"
             aria-label="Designer profile"
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{
               opacity: 0,
@@ -212,14 +217,14 @@ export default function App() {
               transition: { duration: 0.36, ease: HERO_EASE },
             }}
             transition={{ duration: 0.72, ease: HERO_EASE }}
-            className="pointer-events-none fixed inset-0 z-10 flex items-center justify-center px-6 sm:pt-12"
+            className="pointer-events-none fixed inset-0 z-10 flex items-start justify-center px-5 pt-20 sm:px-8 sm:pt-22 lg:pt-[5.5rem]"
           >
-            <div className="w-full max-w-[92vw] sm:max-w-[760px] lg:max-w-[min(92vw,1100px)] text-center overflow-visible">
+            <div className="w-full max-w-[92vw] overflow-visible text-center sm:max-w-[740px] lg:max-w-[min(92vw,960px)]">
               <motion.h1
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.85, delay: 0.08, ease: HERO_EASE }}
-                className="hero-gradient-text overflow-visible whitespace-nowrap pb-[0.06em] text-[clamp(1.618rem,6.2vw,4.236rem)] font-bold tracking-[0.04em] leading-[1.12]"
+                className="hero-gradient-text overflow-visible whitespace-nowrap pb-[0.04em] text-[clamp(1.75rem,5.2vw,3.85rem)] font-bold leading-[1.08] tracking-[0.02em]"
               >
                 YUVRAJ SINGH
               </motion.h1>
@@ -227,7 +232,7 @@ export default function App() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.85, delay: 0.18, ease: HERO_EASE }}
-                className="mx-auto mt-1.5 max-w-[230px] sm:mt-2 sm:max-w-none text-[0.786rem] sm:text-[1.272rem] leading-[1.382] font-medium tracking-[0.02em] text-[#c8d1e6] text-balance"
+                className="mx-auto mt-1.5 max-w-[270px] text-[0.8125rem] font-medium leading-[1.38] tracking-[0.02em] text-[#dce7ff] text-balance sm:mt-2 sm:max-w-none sm:text-[1.18rem]"
               >
                 Creative Technologist • 3D Artist • Motion Designer
               </motion.h2>
@@ -235,10 +240,32 @@ export default function App() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.85, delay: 0.28, ease: HERO_EASE }}
-                className="mx-auto mt-2 max-w-[210px] sm:mt-3 sm:max-w-[540px] text-[0.6875rem] sm:text-[1rem] leading-[1.48] sm:leading-[1.618] font-normal text-[#8e98b2] text-balance"
+                className="mx-auto mt-2 max-w-[260px] text-[0.72rem] font-normal leading-[1.5] text-[#b8c8ea]/85 text-balance sm:mt-2.5 sm:max-w-[540px] sm:text-[0.95rem] sm:leading-[1.6]"
               >
                 Designing immersive digital experiences through 3D, motion, CGI and interactive technology.
               </motion.p>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.85, delay: 0.34, ease: HERO_EASE }}
+                className="pointer-events-auto mt-4 flex flex-wrap items-center justify-center gap-3.5 sm:mt-5"
+              >
+                <a
+                  href="#work"
+                  onClick={(e) => handleNavClick(e, 'work')}
+                  className="inline-flex min-h-[42px] items-center justify-center rounded-full border border-white/55 bg-[#060d24]/70 px-6 py-2 text-xs font-medium tracking-[0.02em] text-white backdrop-blur-sm transition-all duration-200 hover:border-white hover:bg-white/10 sm:px-7 sm:text-sm"
+                >
+                  View Work
+                </a>
+                <a
+                  href="#about"
+                  onClick={(e) => handleNavClick(e, 'about')}
+                  className="inline-flex min-h-[42px] items-center justify-center rounded-full bg-white px-6 py-2 text-xs font-semibold tracking-[0.02em] text-[#07112b] shadow-[0_0_26px_rgba(255,255,255,0.45)] transition-all duration-200 hover:scale-[1.03] hover:shadow-[0_0_34px_rgba(255,255,255,0.68)] sm:px-7 sm:text-sm"
+                >
+                  {"Let's Talk"}
+                </a>
+              </motion.div>
             </div>
           </motion.section>
         </AnimatePresence>
@@ -250,23 +277,23 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.85, delay: 0.4, ease: HERO_EASE }}
             aria-label="Scroll down"
-            className="pointer-events-none fixed bottom-6 left-1/2 z-10 flex h-11 w-7 -translate-x-1/2 items-start justify-center rounded-full border border-violet-300/40 bg-[#090d1b]/45 p-1.5 shadow-[0_0_22px_rgba(139,92,246,0.22)]"
+            className="pointer-events-none fixed bottom-4 left-1/2 z-10 flex h-10 w-6 -translate-x-1/2 items-start justify-center rounded-full border border-violet-300/40 bg-[#0b0a1f]/55 p-1.5 shadow-[0_0_22px_rgba(167,139,250,0.22)]"
           >
             <motion.span
               aria-hidden="true"
-              animate={{ y: [0, 10, 0], opacity: [1, 0.35, 1] }}
+              animate={{ y: [0, 9, 0], opacity: [1, 0.35, 1] }}
               transition={{ duration: 1.35, repeat: Infinity, ease: 'easeInOut' }}
-              className="h-2 w-1 rounded-full bg-violet-300 shadow-[0_0_8px_rgba(196,181,253,0.9)]"
+              className="h-2 w-1 rounded-full bg-violet-200 shadow-[0_0_8px_rgba(221,214,254,0.9)]"
             />
           </motion.div>
         )}
 
-        {/* WebGL Context Lost fallback HUD */}
+        {/* Floating tool name & role hover label + WebGL context fallback */}
         <ShowcaseHUD
-          hoveredTool={null}
-          selectedTool={null}
+          hoveredTool={hoveredTool}
+          hoverAnchorRef={hoverLabelRef}
+          latestAnchorRef={latestHoverAnchorRef}
           contextLost={contextLost}
-          onResetView={handleResetView}
         />
       </main>
 
@@ -274,10 +301,10 @@ export default function App() {
 
       {/* Architectural 3-zone top navigation bar */}
       <header
-        className={`fixed inset-x-0 top-0 z-[60] border-b backdrop-blur-md transition-colors duration-300 ${
+        className={`fixed inset-x-0 top-0 z-[60] border-b transition-colors duration-300 ${
           navScrolled
-            ? 'border-white/[0.1] bg-[#04060e]/92 shadow-[0_8px_30px_rgba(0,0,0,0.45)]'
-            : 'border-white/[0.06] bg-[#04060e]/75'
+            ? 'border-white/[0.1] bg-[#04060e]/92 shadow-[0_8px_30px_rgba(0,0,0,0.45)] backdrop-blur-md'
+            : 'border-transparent bg-transparent'
         }`}
       >
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-8 px-5 sm:px-8 lg:px-12">
@@ -297,7 +324,7 @@ export default function App() {
                 key={item.id}
                 href={`#${item.id}`}
                 label={item.label}
-                isActive={activeSection === item.id}
+                isActive={currentSection === item.id}
                 accentHex={SECTION_THEMES[item.id].accentHex}
                 onClick={(e) => handleNavClick(e, item.id)}
               />
@@ -309,18 +336,28 @@ export default function App() {
             <a
               href="#about"
               onClick={(e) => handleNavClick(e, 'about')}
-              style={{
-                borderColor: `${activeTheme.accentHex}59`,
-                backgroundColor: `${activeTheme.accentHex}1f`,
-              }}
-              className="inline-flex min-h-[40px] shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border px-4 py-2 portfolio-meta font-medium tracking-[0.04em] text-white transition-all duration-200 hover:brightness-125"
+              style={
+                !navScrolled && currentSection === 'home'
+                  ? undefined
+                  : {
+                      borderColor: `${activeTheme.accentHex}59`,
+                      backgroundColor: `${activeTheme.accentHex}1f`,
+                    }
+              }
+              className={
+                !navScrolled && currentSection === 'home'
+                  ? 'inline-flex min-h-[38px] shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-white px-5 py-2 text-xs font-semibold tracking-[0.02em] text-[#07112b] shadow-[0_0_24px_rgba(255,255,255,0.42)] transition-all duration-200 hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(255,255,255,0.68)]'
+                  : 'inline-flex min-h-[40px] shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border px-4 py-2 portfolio-meta font-medium tracking-[0.04em] text-white transition-all duration-200 hover:brightness-125'
+              }
             >
-              <span
-                aria-hidden="true"
-                className="h-1.5 w-1.5 rounded-full transition-colors duration-300"
-                style={{ backgroundColor: activeTheme.accentHex }}
-              />
-              <span>Let’s Talk</span>
+              {(navScrolled || currentSection !== 'home') && (
+                <span
+                  aria-hidden="true"
+                  className="h-1.5 w-1.5 rounded-full transition-colors duration-300"
+                  style={{ backgroundColor: activeTheme.accentHex }}
+                />
+              )}
+              <span>{"Let's Talk"}</span>
             </a>
 
             <button
@@ -428,9 +465,9 @@ export default function App() {
         </div>
       </section>}
 
-      {/* Section 02 · Work: Deep Oceanic Slate & Electric Cyan (#071019) */}
+      {/* Section 02 · Work: Full-width cinematic streaming showcase (#050608) */}
       {!projectId && <div id="work" className="relative z-30 -mt-[100svh] h-[230svh]">
-        <div className="sticky top-0 flex h-[100svh] items-center overflow-hidden border-t border-sky-300/15 bg-[#071019] pt-16">
+        <div className="sticky top-0 flex h-[100svh] items-center overflow-hidden border-t border-white/10 bg-[#050608] pt-16">
           <WorkGallery onOpenProject={openProject} />
         </div>
       </div>}

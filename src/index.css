@@ -171,16 +171,9 @@ html.custom-cursor-active * {
 }
 
 
-/* Responsive interaction and gallery ergonomics */
-.work-gallery-track {
-  scroll-snap-type: x proximity;
-  scroll-padding-inline: 1.5rem;
-  -webkit-overflow-scrolling: touch;
-}
-.work-gallery-track > button { scroll-snap-align: center; }
+/* Responsive interaction ergonomics */
 @media (max-width: 640px) {
   .experience-stage { padding-block: 4rem; }
-  .work-exhibition { padding-block: 4.5rem; }
 }
 
 /* Golden-ratio modular typography applied to section and display headings */
@@ -209,11 +202,6 @@ html.custom-cursor-active * {
 .experience-track > article { min-width: 0; }
 .experience-track:focus-visible { outline: 1px solid rgba(196,181,253,.5); outline-offset: -4px; }
 @media (max-width: 640px) {
-  .work-exhibition { padding-top: 3.25rem; padding-bottom: 3.25rem; }
-  .work-exhibition > div > div:first-child { margin-bottom: 1.25rem; }
-  .work-gallery-track { gap: .75rem; padding-inline: 1.25rem; padding-top: .75rem; padding-bottom: 1.25rem; }
-  .work-gallery-track > button { width: 7.5rem; min-width: 7.5rem; }
-  .work-gallery-track > button:nth-child(even) { margin-top: 1.5rem; }
   .experience-stage { min-height: 690px; min-height: min(100svh, 780px); padding-block: 4.5rem 2.5rem; }
   .about-overlay > div { padding-top: 5.5rem; padding-bottom: 4rem; }
   .about-overlay .portfolio-heading-display { font-size: clamp(2.1rem, 10vw, 3.2rem); }
@@ -222,7 +210,6 @@ html.custom-cursor-active * {
   .experience-track > article h3 { font-size: clamp(1.618rem, 9vw, 2.618rem); }
 }
 @media (min-width: 641px) and (max-width: 1024px) {
-  .work-exhibition { padding-block: 4rem; }
   .about-overlay > div { padding-block: 6rem; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -231,20 +218,10 @@ html.custom-cursor-active * {
 
 
 /* Pinned, layered scroll chapters: video -> work -> experience -> about */
-.work-exhibition > div { width: 100%; }
-.work-gallery-track { user-select: none; overscroll-behavior-x: contain; }
 .experience-pin { position: relative; }
 .experience-stage { min-height: 100svh; }
 .experience-track { width: 300%; }
 .about-overlay { position: relative; z-index: 50; }
-@media (max-width: 640px) {
-  .work-exhibition { padding-block: 1.5rem; }
-  .work-exhibition > div > div:first-child { padding-inline: 1.25rem; }
-  .work-gallery-track { padding-inline: 1.25rem; padding-top: .5rem; padding-bottom: .75rem; }
-  .work-gallery-track > button { width: 7.25rem; min-width: 7.25rem; }
-  .work-gallery-track > button:hover { width: 12rem; min-width: 12rem; }
-  .work-gallery-track > button:nth-child(even) { margin-top: 1rem; }
-}
 @media (prefers-reduced-motion: reduce) {
   .experience-track { transition-duration: 0ms !important; }
 }

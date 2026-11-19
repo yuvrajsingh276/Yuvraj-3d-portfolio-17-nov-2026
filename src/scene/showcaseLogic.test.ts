@@ -26,13 +26,28 @@ import {
   computeDecorativePropsLayout,
   sampleOrbitPoint,
   computeParticleHoverDisplacement,
+  getOrbitCenterY,
+  getOrbitParams,
+  EARTH_ICON_ASSIGNMENTS,
+  EARTH_SPARKLE_SPECS,
+  getEarthOrbitConfig,
+  sampleEarthRingPoint,
+  computeEarthConcentricLayout,
+  alignOrbitalPointToDepthZ,
+  computeOrbitAutoScrollSpeed,
+  clampHoverTooltipPosition,
+  ORBIT_NORMAL_SPEED_DEG_PER_SEC,
+  ORBIT_HOVER_SLOW_SPEED_DEG_PER_SEC,
 } from './showcaseLogic';
 
-test('catalog contains all required core creative and AI tools with unique IDs and GLB node names', () => {
+test('catalog contains all required core creative and AI tools with unique IDs, GLB nodes, and roles', () => {
   const ids = new Set(TOOLS_CATALOG.map((t) => t.id));
   const glbNodes = new Set(TOOLS_CATALOG.map((t) => t.glbNodeName));
   assert.equal(ids.size, TOOLS_CATALOG.length);
   assert.equal(glbNodes.size, TOOLS_CATALOG.length);
+  for (const tool of TOOLS_CATALOG) {
+    assert.ok(tool.role.trim().length >= 4, `Expected non-empty role for ${tool.id}`);
+  }
   for (const required of [
     'after-effects',
     'premiere',
@@ -130,14 +145,14 @@ test('responsive camera distance pulls back smoothly on narrow mobile screens', 
   assert.ok(mobileDist > tabletDist && tabletDist > desktopDist);
 });
 
-test('hover kinematics smoothly advances forward on Z, scales up, and returns to rest', () => {
+test('hover kinematics smoothly advances forward on Z, scales up cleanly, and returns to rest', () => {
   let state = { zPull: 0, scale: 1.0, glowBoost: 0 };
   for (let i = 0; i < 60; i++) {
     state = stepHoverKinematics(state, true, false, 1 / 60);
   }
-  assert.ok(state.zPull > 0.74 && state.zPull <= 0.79);
-  assert.ok(state.scale > 1.12 && state.scale <= 1.15);
-  assert.ok(state.glowBoost > 0.8);
+  assert.ok(state.zPull > 0.9 && state.zPull <= 0.96, `Expected zPull ~0.95, got ${state.zPull}`);
+  assert.ok(state.scale > 1.21 && state.scale <= 1.25, `Expected scale ~1.24x, got ${state.scale}`);
+  assert.ok(state.glowBoost > 0.85);
 
   for (let i = 0; i < 120; i++) {
     state = stepHoverKinematics(state, false, false, 1 / 60);
@@ -145,6 +160,40 @@ test('hover kinematics smoothly advances forward on Z, scales up, and returns to
   assert.ok(Math.abs(state.zPull) < 0.01);
   assert.ok(Math.abs(state.scale - 1.0) < 0.01);
   assert.ok(state.glowBoost < 0.01);
+});
+
+test('orbit auto-scroll slows smoothly on hover without snapping and clamps hover tooltip inside viewport', () => {
+  const normal = computeOrbitAutoScrollSpeed({
+    motionPaused: false,
+    reducedMotion: false,
+    isDragging: false,
+    hasHoveredTool: false,
+    hasSelectedTool: false,
+  });
+  const hovered = computeOrbitAutoScrollSpeed({
+    motionPaused: false,
+    reducedMotion: false,
+    isDragging: false,
+    hasHoveredTool: true,
+    hasSelectedTool: false,
+  });
+  const paused = computeOrbitAutoScrollSpeed({
+    motionPaused: true,
+    reducedMotion: false,
+    isDragging: false,
+    hasHoveredTool: false,
+    hasSelectedTool: false,
+  });
+
+  assert.equal(normal, ORBIT_NORMAL_SPEED_DEG_PER_SEC);
+  assert.equal(hovered, ORBIT_HOVER_SLOW_SPEED_DEG_PER_SEC);
+  assert.ok(hovered > 0.05 && hovered < normal * 0.35);
+  assert.equal(paused, 0);
+
+  const clampedEdge = clampHoverTooltipPosition(10, 15, 390, 844);
+  assert.ok(clampedEdge.x >= 90 && clampedEdge.y >= 72);
+  const clampedRight = clampHoverTooltipPosition(1430, 890, 1440, 900);
+  assert.ok(clampedRight.x <= 1320 && clampedRight.y <= 876);
 });
 
 test('dampValue converges monotonically without overshooting', () => {
@@ -410,6 +459,90 @@ test('dof config clamps strength, tracks camera focus plane, and disables blur a
   assert.equal(racked.strength, 1);
   assert.ok(Math.abs(racked.focus - 15.4) < 1e-6);
   assert.ok(racked.maxblur > mid.maxblur && racked.maxblur <= 0.015);
+});
+
+test('getOrbitCenterY stages Earth orbital system cleanly in lower half below upper hero typography', () => {
+  for (const aspect of [1.6, 0.46]) {
+    const centerY = getOrbitCenterY(aspect);
+    const cfg = getEarthOrbitConfig(aspect);
+    assert.ok(centerY < -5.0, `Expected lower Earth center Y at aspect=${aspect}, got ${centerY}`);
+    const earthTop = centerY + cfg.earthRadius;
+    assert.ok(earthTop < -2.5, `Expected Earth top crest safely below upper hero CTAs at aspect=${aspect}, got ${earthTop}`);
+  }
+});
+
+test('concentric Earth orbital layout places all 10 tools on 5 concentric rings with front/mid/back depth layers and safe separation', () => {
+  for (const aspect of [1.6, 0.46]) {
+    const cfg = getEarthOrbitConfig(aspect);
+    assert.equal(cfg.ringRadii.length, 5);
+    assert.equal(cfg.ringSpeedMultipliers.length, 5);
+
+    const observedDepthLayers = new Set<string>();
+    for (let angle = 0; angle <= 360; angle += 15) {
+      const slots = computeEarthConcentricLayout(TOOLS_CATALOG, aspect, angle);
+      assert.equal(slots.length, 10);
+      for (const slot of slots) {
+        const assign = EARTH_ICON_ASSIGNMENTS[slot.id];
+        assert.ok(assign, `Missing concentric ring assignment for ${slot.id}`);
+        assert.ok(slot.depthLayer && slot.depthScale, `Missing depth hierarchy metadata for ${slot.id}`);
+        observedDepthLayers.add(slot.depthLayer);
+
+        const expectedRadius = cfg.ringRadii[assign.ringIndex];
+        const actualRadius = Math.hypot(slot.position[0], slot.position[1]);
+        assert.ok(
+          Math.abs(actualRadius - expectedRadius) < 1e-5,
+          `Expected ${slot.id} on ring ${assign.ringIndex} radius ${expectedRadius}, got ${actualRadius.toFixed(4)}`
+        );
+        assert.ok(
+          actualRadius >= cfg.earthRadius + 0.9,
+          `Expected ${slot.id} safely outside Earth surface (${cfg.earthRadius})`
+        );
+      }
+      const minDist = computeMinPairwiseDistance(slots);
+      assert.ok(
+        minDist >= 2.0,
+        `Expected safe separation >= 2.0 across concentric Earth rings at aspect=${aspect} angle=${angle}, got ${minDist.toFixed(2)}`
+      );
+    }
+
+    assert.ok(
+      observedDepthLayers.has('front') && observedDepthLayers.has('mid') && observedDepthLayers.has('back'),
+      'Expected front, mid, and back depth layers across Earth orbital icons'
+    );
+  }
+});
+
+test('star sparkles connect strictly on concentric rings and camera-ray depth projection stays screen-locked', () => {
+  assert.equal(EARTH_SPARKLE_SPECS.length, 3);
+  for (const aspect of [1.6, 0.46]) {
+    const cfg = getEarthOrbitConfig(aspect);
+    const isPortrait = aspect < 0.85;
+    for (const sp of EARTH_SPARKLE_SPECS) {
+      const theta = isPortrait ? sp.mobileThetaDeg : sp.desktopThetaDeg;
+      const [sx, sy] = sampleEarthRingPoint(sp.ringIndex, theta, aspect);
+      const r = Math.hypot(sx, sy);
+      assert.ok(
+        Math.abs(r - cfg.ringRadii[sp.ringIndex]) < 1e-5,
+        `Expected sparkle ${sp.id} locked onto ring ${sp.ringIndex}`
+      );
+    }
+
+    // Verify front (+1.85) and back (-2.4) icons project to the same normalized camera ray as their ring point
+    const camDist = computeResponsiveCameraDistance(aspect);
+    const camPosZ = camDist * (aspect >= 0.85 ? 1.08 : 1.04);
+    const ringZ = -0.35;
+    const [rx, ry] = sampleEarthRingPoint(0, 52, aspect);
+    for (const zOff of [1.85, -2.4]) {
+      const [ax, ay, az] = alignOrbitalPointToDepthZ(rx, ry, ringZ, zOff, cfg.earthCenterY, camPosZ);
+      assert.equal(az, zOff);
+      const origScreenX = rx / (camPosZ - ringZ);
+      const alignedScreenX = ax / (camPosZ - az);
+      const origScreenY = (cfg.earthCenterY + ry - 0.15) / (camPosZ - ringZ);
+      const alignedScreenY = (cfg.earthCenterY + ay - 0.15) / (camPosZ - az);
+      assert.ok(Math.abs(origScreenX - alignedScreenX) < 1e-6);
+      assert.ok(Math.abs(origScreenY - alignedScreenY) < 1e-6);
+    }
+  }
 });
 
 

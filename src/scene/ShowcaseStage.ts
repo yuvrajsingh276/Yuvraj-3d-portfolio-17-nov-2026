@@ -10,7 +10,6 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import {
   TOOLS_CATALOG,
   LIGHTING_PRESETS,
-  computeOrbitalLayout,
   computeResponsiveCameraDistance,
   computeUniformScreenScaleFactor,
   computeAmbientBreathing,
@@ -24,12 +23,19 @@ import {
   computeDecorativePropsLayout,
   computeBloomConfig,
   computeDofConfig,
-  getOrbitParams,
-  sampleOrbitPoint,
+  getEarthOrbitConfig,
+  sampleEarthRingPoint,
+  computeEarthConcentricLayout,
+  alignOrbitalPointToDepthZ,
+  EARTH_SPARKLE_SPECS,
   computeParticleHoverDisplacement,
+  computeOrbitAutoScrollSpeed,
+  clampHoverTooltipPosition,
   type LightingPreset,
   type LightingPresetId,
   type ToolSpec,
+  type DepthLayer,
+  type OrbitalSlot,
   type HoverKinematicsState,
   type MagneticRotationState,
   type IconScatterState,
@@ -38,6 +44,7 @@ import {
   createFlutedAuroraBackground,
   type FlutedBackgroundController,
 } from './flutedBackground';
+import { createEarthPlanet, type EarthPlanetHandle } from './earthPlanet';
 import { ShowcaseBokehPass } from './dofPass';
 import { createProceduralTextures, type ProceduralTextureSet } from './proceduralTextures';
 import { buildToolIcon, type BuiltIconEntry } from './iconBuilders';
@@ -49,6 +56,7 @@ import {
 
 export interface ShowcaseCallbacks {
   onHoverChange?: (tool: ToolSpec | null) => void;
+  onHoverAnchorChange?: (anchor: { x: number; y: number } | null) => void;
   onSelectChange?: (tool: ToolSpec | null) => void;
   onContextLostChange?: (lost: boolean) => void;
 }
@@ -98,14 +106,18 @@ export class ShowcaseStage {
   private dustHoverOffsets!: Float32Array;
   private orbitParticles!: THREE.Points;
   private orbitParticleMeta: {
-    baseFraction: number;
-    speed: number;
+    ringIndex: number;
+    baseThetaDeg: number;
+    speedDeg: number;
     radialOffset: [number, number, number];
     phase: number;
   }[] = [];
   private orbitParticleHoverOffsets!: Float32Array;
   private orbitGlowMaterials: THREE.ShaderMaterial[] = [];
+  private sparkleSprites: { sprite: THREE.Sprite; baseScale: number; phase: number }[] = [];
+  private sparkleTextures: THREE.CanvasTexture[] = [];
   private flutedBg!: FlutedBackgroundController;
+  private earthPlanet: EarthPlanetHandle | null = null;
   private orbitGuideRing!: THREE.Group;
   private scatterStates = new Map<string, IconScatterState>();
   private scatterBurstPoints!: THREE.Points;
@@ -151,7 +163,11 @@ export class ShowcaseStage {
   private bloomIntensity = 0;
   private dofStrength = 0;
   private currentFocusWorldZ = 0.35;
+  private hadHoverAnchor = false;
+  private orbitParticleTime = 0;
   private iconHalos = new Map<string, THREE.Sprite>();
+  private iconPointLights = new Map<string, THREE.PointLight>();
+  private iconDepthMeta = new Map<string, { depthLayer: DepthLayer; depthScale: number }>();
 
   private frameId = 0;
   private lastTimeMs = 0;
@@ -334,17 +350,24 @@ export class ShowcaseStage {
   }
 
   private initEnvironmentDecor() {
-    this.scene.add(this.constellationGroup);
-
     const aspect =
       Math.max(1, this.container.clientWidth) / Math.max(1, this.container.clientHeight);
+    const cfg = getEarthOrbitConfig(aspect);
+    this.constellationGroup.position.set(0, cfg.earthCenterY, 0);
+    this.scene.add(this.constellationGroup);
 
-    // Fluted violet-glass aurora backdrop with interactive cursor refraction
+    // Fluted aurora backdrop stays disabled in favor of cosmic starfield background
     this.flutedBg = createFlutedAuroraBackground();
     this.flutedBg.mesh.visible = false;
     this.scene.add(this.flutedBg.mesh);
 
-    // Subtle thin tilted orbital guide ring around central typography
+    // Central atmospheric 3D Earth emerging from lower horizon
+    const maxAnisotropy = this.renderer.capabilities.getMaxAnisotropy();
+    this.earthPlanet = createEarthPlanet(cfg.earthRadius, maxAnisotropy);
+    this.earthPlanet.group.position.set(0, 0, cfg.earthZ);
+    this.constellationGroup.add(this.earthPlanet.group);
+
+    // 5 crisp concentric circular orbital track lines centered on Earth
     this.initOrbitalGuideRing(aspect);
 
     this.initScatterBurstParticles();
@@ -352,158 +375,158 @@ export class ShowcaseStage {
 
   private initOrbitalGuideRing(aspect: number) {
     this.orbitGuideRing = new THREE.Group();
-    // Keep the orbit in the exact same coordinate space as the icon anchors.
     this.constellationGroup.add(this.orbitGuideRing);
     this.rebuildOrbitalGuideRing(aspect, this.magneticRotation.angleDeg);
-    // Keep the orbital guide hidden; the moving stardust particles remain visible.
-    this.orbitGuideRing.visible = false;
+    this.orbitGuideRing.visible = true;
   }
 
-  /** Fixed tilted oval using the exact arc-length curve shared by icons and orbit particles. */
+  private createSparkleCrossTexture(coreHex: string, glowHex: string): THREE.CanvasTexture {
+    const size = 128;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+    const c = size / 2;
+
+    const glowColor = new THREE.Color(glowHex);
+    const gr = Math.round(glowColor.r * 255);
+    const gg = Math.round(glowColor.g * 255);
+    const gb = Math.round(glowColor.b * 255);
+
+    const halo = ctx.createRadialGradient(c, c, 0, c, c, size * 0.48);
+    halo.addColorStop(0, `rgba(${gr}, ${gg}, ${gb}, 0.72)`);
+    halo.addColorStop(0.35, `rgba(${gr}, ${gg}, ${gb}, 0.24)`);
+    halo.addColorStop(1, `rgba(${gr}, ${gg}, ${gb}, 0)`);
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(c, c, size * 0.48, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Crisp 4-point cross flare connected cleanly on the orbital track
+    const outerR = size * 0.42;
+    const waist = size * 0.065;
+    ctx.fillStyle = coreHex;
+    ctx.beginPath();
+    ctx.moveTo(c, c - outerR);
+    ctx.quadraticCurveTo(c + waist * 0.45, c - waist * 0.45, c + outerR, c);
+    ctx.quadraticCurveTo(c + waist * 0.45, c + waist * 0.45, c, c + outerR);
+    ctx.quadraticCurveTo(c - waist * 0.45, c + waist * 0.45, c - outerR, c);
+    ctx.quadraticCurveTo(c - waist * 0.45, c - waist * 0.45, c, c - outerR);
+    ctx.closePath();
+    ctx.fill();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  /** Renders 5 crisp concentric circular orbital lines + 3 line-connected colored star sparkles. */
   private rebuildOrbitalGuideRing(aspect: number, _angleOffsetDeg: number) {
     if (!this.orbitGuideRing) return;
 
     this.orbitGlowMaterials = [];
+    this.sparkleSprites = [];
+    for (const tex of this.sparkleTextures) {
+      tex.dispose();
+    }
+    this.sparkleTextures = [];
+
     for (const child of [...this.orbitGuideRing.children]) {
       this.orbitGuideRing.remove(child);
-      const mesh = child as THREE.Mesh;
-      mesh.geometry?.dispose();
-      const material = mesh.material;
-      if (Array.isArray(material)) material.forEach((item) => item.dispose());
-      else material?.dispose();
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        mesh.geometry?.dispose();
+        const material = mesh.material;
+        if (Array.isArray(material)) material.forEach((item) => item.dispose());
+        else material?.dispose();
+      } else if ((child as THREE.Sprite).isSprite) {
+        (child as THREE.Sprite).material?.dispose();
+      }
     }
 
-    const pointOnOrbit = (arcFraction: number, scale = 1) => {
-      const [x, y, z] = sampleOrbitPoint(arcFraction, aspect, scale);
-      return new THREE.Vector3(x, y, z);
-    };
-    const points = Array.from({ length: 256 }, (_, i) => pointOnOrbit(i / 256));
-    const curve = new THREE.CatmullRomCurve3(points, true, 'centripetal', 0.35);
+    const cfg = getEarthOrbitConfig(aspect);
+    const isPortrait = aspect < 0.85;
+    const halfWidth = isPortrait ? 0.056 : 0.032;
+    const lineOpacities = [0.46, 0.42, 0.38, 0.34, 0.3];
 
-    const makeGradientTube = (
-      path: THREE.Curve<THREE.Vector3>,
-      radius: number,
-      tubularSegments: number,
-      closed: boolean,
-      radialSegments = 12
-    ) => {
-      const geometry = new THREE.TubeGeometry(path, tubularSegments, radius, radialSegments, closed);
-      const colors = new Float32Array(geometry.getAttribute('position').count * 3);
-      const verticesPerRing = radialSegments + 1;
-      for (let i = 0; i < colors.length / 3; i++) {
-        const t = Math.floor(i / verticesPerRing) / tubularSegments;
-        const [r, g, b] = sampleYellowRedOrangeBlueGradient(t);
-        colors[i * 3] = r;
-        colors[i * 3 + 1] = g;
-        colors[i * 3 + 2] = b;
-      }
-      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-      return geometry;
-    };
-
-    const createOrbitGlowShader = (baseOpacity: number, pulseGain: number, edgePower: number) => {
+    cfg.ringRadii.forEach((radius, ringIndex) => {
+      const ringZ = -0.35 + ringIndex * 0.16;
+      const geo = new THREE.RingGeometry(radius - halfWidth, radius + halfWidth, 240, 1);
       const mat = new THREE.ShaderMaterial({
         uniforms: {
           uTime: { value: 0 },
-          uBaseOpacity: { value: baseOpacity },
-          uPulseGain: { value: pulseGain },
-          uEdgePower: { value: edgePower },
+          uBaseOpacity: { value: lineOpacities[ringIndex] ?? 0.32 },
+          uRadius: { value: radius },
+          uHalfW: { value: halfWidth },
           uPointerPos: { value: new THREE.Vector3() },
           uPointerActive: { value: 0 },
         },
         vertexShader: `
-          attribute vec3 color;
-          varying vec3 vColor;
-          varying vec2 vUv;
           varying vec3 vLocalPos;
-          varying vec3 vNormalView;
-          varying vec3 vViewPos;
           void main() {
-            vColor = color;
-            vUv = uv;
             vLocalPos = position;
-            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-            vNormalView = normalize(normalMatrix * normal);
-            vViewPos = -mvPosition.xyz;
-            gl_Position = projectionMatrix * mvPosition;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
           }
         `,
         fragmentShader: `
           uniform float uTime;
           uniform float uBaseOpacity;
-          uniform float uPulseGain;
-          uniform float uEdgePower;
+          uniform float uRadius;
+          uniform float uHalfW;
           uniform vec3 uPointerPos;
           uniform float uPointerActive;
-          varying vec3 vColor;
-          varying vec2 vUv;
           varying vec3 vLocalPos;
-          varying vec3 vNormalView;
-          varying vec3 vViewPos;
           void main() {
-            float wave1 = 0.5 + 0.5 * sin(vUv.x * 6.2831853 * 2.0 - uTime * 0.95);
-            float wave2 = 0.5 + 0.5 * sin(vUv.x * 6.2831853 * 4.0 + uTime * 0.65);
-            float shimmer = smoothstep(0.15, 0.95, wave1) * 0.65 + smoothstep(0.2, 0.95, wave2) * 0.35;
+            float angle = atan(vLocalPos.y, vLocalPos.x);
+            float radialDist = abs(length(vLocalPos.xy) - uRadius);
+            float aa = smoothstep(uHalfW, uHalfW * 0.18, radialDist);
+            // Bright along upper celestial sky arc and gently tapering into dark horizon corners
+            float skyFade = smoothstep(-0.22, 0.24, sin(angle));
+            float shimmer = 0.92 + 0.08 * sin(angle * 3.0 - uTime * 0.7);
+            float dPtr = distance(vec3(vLocalPos.xy, 0.0), vec3(uPointerPos.xy, 0.0));
+            float hoverLift = smoothstep(3.6, 0.0, dPtr) * uPointerActive * 0.35;
 
-            float dPtr = distance(vLocalPos, uPointerPos);
-            float hoverGlow = smoothstep(3.8, 0.0, dPtr) * uPointerActive;
-
-            // Smooth Gaussian-like radial feathering across the tube silhouette
-            float facing = clamp(abs(dot(normalize(vNormalView), normalize(vViewPos))), 0.0, 1.0);
-            float radialFeather = pow(smoothstep(0.015, 0.78, facing), max(0.85, uEdgePower * 0.58));
-
-            vec3 luminous = mix(vColor, vec3(0.79, 0.72, 1.0), 0.38 + hoverGlow * 0.48);
-            luminous *= (0.98 + shimmer * uPulseGain + hoverGlow * 1.05);
-            float alpha = clamp(uBaseOpacity * radialFeather * (0.9 + shimmer * 0.4 + hoverGlow * 0.75), 0.0, 1.0);
-            gl_FragColor = vec4(luminous, alpha);
+            vec3 lineColor = mix(vec3(0.76, 0.80, 0.98), vec3(0.95, 0.92, 1.0), hoverLift);
+            float alpha = clamp((uBaseOpacity * skyFade * shimmer + hoverLift * 0.3) * aa, 0.0, 0.92);
+            if (alpha < 0.01) discard;
+            gl_FragColor = vec4(lineColor, alpha);
           }
         `,
         transparent: true,
-        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
         depthWrite: false,
-        depthTest: true,
+        blending: THREE.AdditiveBlending,
       });
       this.orbitGlowMaterials.push(mat);
-      return mat;
-    };
 
-    // Thin, crisp orbital core with richer multi-layer silky feathered glow
-    const outerAura = new THREE.Mesh(
-      makeGradientTube(curve, 0.082, 512, true, 12),
-      createOrbitGlowShader(0.19, 0.48, 2.1)
-    );
-    const midGlow = new THREE.Mesh(
-      makeGradientTube(curve, 0.021, 640, true, 12),
-      createOrbitGlowShader(0.34, 0.62, 1.45)
-    );
-    const core = new THREE.Mesh(
-      makeGradientTube(curve, 0.0048, 768, true, 10),
-      createOrbitGlowShader(1.0, 0.95, 1.1)
-    );
-    outerAura.renderOrder = -22;
-    midGlow.renderOrder = -21;
-    core.renderOrder = -20;
-    this.orbitGuideRing.add(outerAura, midGlow, core);
-
-    // Fine harmonic accent filaments around the glowing main orbit
-    const accentArcs = [
-      { start: 0.035, end: 0.285, scale: 1.028, radius: 0.0022, opacity: 0.24 },
-      { start: 0.365, end: 0.595, scale: 0.972, radius: 0.002, opacity: 0.22 },
-      { start: 0.695, end: 0.935, scale: 1.042, radius: 0.0022, opacity: 0.23 },
-    ];
-    accentArcs.forEach((arc, index) => {
-      const arcPoints = Array.from({ length: 52 }, (_, i) => {
-        const t = arc.start + (arc.end - arc.start) * (i / 51);
-        return pointOnOrbit(t, arc.scale);
-      });
-      const arcCurve = new THREE.CatmullRomCurve3(arcPoints, false, 'centripetal', 0.35);
-      const line = new THREE.Mesh(
-        makeGradientTube(arcCurve, arc.radius, 96, false, 8),
-        createOrbitGlowShader(arc.opacity, 0.35, 1.4)
-      );
-      line.renderOrder = -18 + index;
-      this.orbitGuideRing?.add(line);
+      const ringMesh = new THREE.Mesh(geo, mat);
+      ringMesh.position.set(0, 0, ringZ);
+      ringMesh.renderOrder = -20 + ringIndex;
+      this.orbitGuideRing?.add(ringMesh);
     });
+
+    // Attach colored 4-point cross star sparkles directly ON the concentric orbital lines
+    for (const sp of EARTH_SPARKLE_SPECS) {
+      const tex = this.createSparkleCrossTexture(sp.coreHex, sp.glowHex);
+      this.sparkleTextures.push(tex);
+      const spMat = new THREE.SpriteMaterial({
+        map: tex,
+        transparent: true,
+        opacity: 0.96,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        depthTest: false,
+      });
+      const sprite = new THREE.Sprite(spMat);
+      const thetaDeg = isPortrait ? sp.mobileThetaDeg : sp.desktopThetaDeg;
+      const [sx, sy, sz] = sampleEarthRingPoint(sp.ringIndex, thetaDeg, aspect);
+      const baseScale = sp.size * (isPortrait ? 1.55 : 1.0);
+      sprite.position.set(sx, sy, sz + 0.06);
+      sprite.scale.setScalar(baseScale);
+      sprite.renderOrder = -10 + sp.ringIndex;
+      this.orbitGuideRing?.add(sprite);
+      this.sparkleSprites.push({ sprite, baseScale, phase: sp.phase });
+    }
   }
   private initScatterBurstParticles() {
     const count = 36;
@@ -553,7 +576,7 @@ export class ShowcaseStage {
       }
 
       this.glbAssets = assets;
-      const slots = computeOrbitalLayout(
+      const slots = computeEarthConcentricLayout(
         TOOLS_CATALOG,
         this.currentAspect,
         this.magneticRotation.angleDeg
@@ -562,9 +585,6 @@ export class ShowcaseStage {
 
       for (let i = 0; i < assets.icons.length; i++) {
         const built = assets.icons[i];
-        const slot = slots[i];
-        built.anchorGroup.position.set(slot.position[0], slot.position[1], slot.position[2]);
-        built.anchorGroup.rotation.set(slot.baseRotationX, slot.baseRotationY, slot.baseRotationZ);
         this.attachIconHalo(built);
 
         this.constellationGroup.add(built.anchorGroup);
@@ -573,6 +593,7 @@ export class ShowcaseStage {
         this.hoverStates.set(built.spec.id, { zPull: 0, scale: 1.0, glowBoost: 0 });
         this.scatterStates.set(built.spec.id, createIdleScatterState(2.0));
       }
+      this.applyIconSlots(slots);
 
       const propSlots = computeDecorativePropsLayout(this.currentAspect);
       for (let i = 0; i < assets.props.length; i++) {
@@ -582,6 +603,8 @@ export class ShowcaseStage {
           prop.anchorGroup.position.set(slot.position[0], slot.position[1], slot.position[2]);
           prop.anchorGroup.rotation.set(slot.rotation[0], slot.rotation[1], slot.rotation[2]);
         }
+        // Keep cartoon props hidden so clean concentric Earth orbital tracks take visual focus
+        prop.anchorGroup.visible = false;
         this.constellationGroup.add(prop.anchorGroup);
         this.propEntries.push(prop);
       }
@@ -598,15 +621,12 @@ export class ShowcaseStage {
     const aspect =
       Math.max(1, this.container.clientWidth) / Math.max(1, this.container.clientHeight);
     this.currentAspect = aspect;
-    const slots = computeOrbitalLayout(TOOLS_CATALOG, aspect, this.magneticRotation.angleDeg);
+    const slots = computeEarthConcentricLayout(TOOLS_CATALOG, aspect, this.magneticRotation.angleDeg);
     this.lastAppliedAngleDeg = this.magneticRotation.angleDeg;
 
     for (let i = 0; i < TOOLS_CATALOG.length; i++) {
       const spec = TOOLS_CATALOG[i];
-      const slot = slots[i];
       const built = buildToolIcon(spec, this.textures);
-      built.anchorGroup.position.set(slot.position[0], slot.position[1], slot.position[2]);
-      built.anchorGroup.rotation.y = slot.baseRotationY;
       this.attachIconHalo(built);
 
       this.constellationGroup.add(built.anchorGroup);
@@ -615,19 +635,51 @@ export class ShowcaseStage {
       this.hoverStates.set(spec.id, { zPull: 0, scale: 1.0, glowBoost: 0 });
       this.scatterStates.set(spec.id, createIdleScatterState(2.0));
     }
+    this.applyIconSlots(slots);
+  }
+
+  private applyIconSlots(slots: OrbitalSlot[]) {
+    const earthCfg = getEarthOrbitConfig(this.currentAspect);
+    const camPosZ = this.camera.position.z;
+
+    for (let i = 0; i < this.icons.length; i++) {
+      const slot = slots[i];
+      if (!slot) continue;
+      const ringIdx = slot.ringIndex ?? 0;
+      const ringZ = -0.35 + ringIdx * 0.16;
+      const [ax, ay, az] = alignOrbitalPointToDepthZ(
+        slot.position[0],
+        slot.position[1],
+        ringZ,
+        slot.position[2],
+        earthCfg.earthCenterY,
+        camPosZ
+      );
+      this.icons[i].anchorGroup.position.set(ax, ay, az);
+      this.icons[i].anchorGroup.rotation.set(
+        slot.baseRotationX,
+        slot.baseRotationY,
+        slot.baseRotationZ
+      );
+      this.iconDepthMeta.set(this.icons[i].spec.id, {
+        depthLayer: slot.depthLayer ?? 'mid',
+        depthScale: slot.depthScale ?? 0.9,
+      });
+    }
   }
 
   private attachIconHalo(entry: BuiltIconEntry) {
     // Small, local accent light makes each icon catch light at its own position.
-    const localLight = new THREE.PointLight(entry.spec.accentHex, 2.6, 3.6, 2);
+    const localLight = new THREE.PointLight(entry.spec.accentHex, 2.2, 3.6, 2);
     localLight.position.set(0, 0, 0.32);
     entry.bodyGroup.add(localLight);
+    this.iconPointLights.set(entry.spec.id, localLight);
 
     const haloMat = new THREE.SpriteMaterial({
       map: this.textures.glowSprite,
       color: entry.spec.accentHex,
       transparent: true,
-      opacity: 0.42,
+      opacity: 0.32,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       depthTest: false,
@@ -641,7 +693,7 @@ export class ShowcaseStage {
   }
 
   private initOrbitParticles() {
-    const count = 720;
+    const count = 260;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     this.orbitParticleHoverOffsets = new Float32Array(count * 3);
@@ -657,28 +709,28 @@ export class ShowcaseStage {
       Math.max(1, this.container.clientWidth) / Math.max(1, this.container.clientHeight);
 
     for (let i = 0; i < count; i++) {
-      const baseFraction = i / count + (rand() - 0.5) * 0.004;
-      const speed = 0.011 + rand() * 0.018;
-      // Blend tight core-hugging sparks with a gentle halo band around the orbit
-      const bandSpread = i % 3 === 0 ? 0.42 : 0.19;
+      const ringIndex = i % 5;
+      const baseThetaDeg = -10 + rand() * 200;
+      const speedDeg = 1.8 + rand() * 2.4;
+      const bandSpread = 0.08;
       const radialOffset: [number, number, number] = [
         (rand() - 0.5) * bandSpread,
-        (rand() - 0.5) * bandSpread * 0.72,
-        (rand() - 0.5) * bandSpread * 0.72,
+        (rand() - 0.5) * bandSpread,
+        (rand() - 0.5) * 0.05,
       ];
       const phase = rand() * Math.PI * 2;
-      this.orbitParticleMeta.push({ baseFraction, speed, radialOffset, phase });
+      this.orbitParticleMeta.push({ ringIndex, baseThetaDeg, speedDeg, radialOffset, phase });
 
-      const [ox, oy, oz] = sampleOrbitPoint(baseFraction, aspect, 1);
+      const [ox, oy, oz] = sampleEarthRingPoint(ringIndex, baseThetaDeg, aspect);
       positions[i * 3] = ox + radialOffset[0];
       positions[i * 3 + 1] = oy + radialOffset[1];
       positions[i * 3 + 2] = oz + radialOffset[2];
 
-      const [cr, cg, cb] = sampleYellowRedOrangeBlueGradient(baseFraction);
-      // Enrich with bright violet-white luminescence for glowing orbit stardust
-      colors[i * 3] = Math.min(1, cr * 0.7 + 0.36);
-      colors[i * 3 + 1] = Math.min(1, cg * 0.66 + 0.32);
-      colors[i * 3 + 2] = Math.min(1, cb * 0.76 + 0.42);
+      // Restrained cosmic silver-lavender motes matching the planetary orbit aesthetic
+      const tone = 0.72 + rand() * 0.25;
+      colors[i * 3] = tone * 0.85;
+      colors[i * 3 + 1] = tone * 0.88;
+      colors[i * 3 + 2] = Math.min(1, tone * 1.06);
     }
 
     const geo = new THREE.BufferGeometry();
@@ -686,10 +738,10 @@ export class ShowcaseStage {
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
     const mat = new THREE.PointsMaterial({
-      size: 0.108,
+      size: 0.078,
       map: this.textures.glowSprite,
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.45,
       vertexColors: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
@@ -804,6 +856,19 @@ export class ShowcaseStage {
 
   private handleWindowPointerMove = (e: PointerEvent) => {
     if (!this.heroVisible || this.isDraggingScene) return;
+    if (e.target !== this.renderer.domElement) {
+      this.pointerNdc.set(99, 99);
+      if (this.hoveredToolId !== null) {
+        this.hoveredToolId = null;
+        this.renderer.domElement.style.cursor = this.selectedToolId ? 'default' : 'grab';
+        if (this.hadHoverAnchor) {
+          this.hadHoverAnchor = false;
+          this.callbacks.onHoverAnchorChange?.(null);
+        }
+        this.callbacks.onHoverChange?.(null);
+      }
+      return;
+    }
     this.updatePointerCoords(e);
   };
 
@@ -866,22 +931,25 @@ export class ShowcaseStage {
       this.bloomPass.resolution.set(width, height);
     }
 
-    // Recompute responsive orbital spread and overview camera distance so mobile viewports frame cleanly
-    const slots = computeOrbitalLayout(TOOLS_CATALOG, aspect, this.magneticRotation.angleDeg);
+    // Recompute responsive concentric Earth planet scale, 5 orbit tracks, and 10 icon slots
+    const earthCfg = getEarthOrbitConfig(aspect);
+    this.constellationGroup.position.set(0, earthCfg.earthCenterY, 0);
+    if (this.earthPlanet) {
+      this.earthPlanet.setRadius(earthCfg.earthRadius);
+      this.earthPlanet.group.position.set(0, 0, earthCfg.earthZ);
+    }
+    _vec3A.set(0, 0, 1);
+    _orbitPlane.setFromNormalAndCoplanarPoint(_vec3A, this.constellationGroup.position);
+
+    const targetDist = computeResponsiveCameraDistance(aspect);
+    this.camera.position.set(0, 0.15, targetDist * (aspect >= 0.85 ? 1.08 : 1.04));
+    this.controls.target.set(0, 0.15, 0);
+    this.controls.update();
+
+    const slots = computeEarthConcentricLayout(TOOLS_CATALOG, aspect, this.magneticRotation.angleDeg);
     this.lastAppliedAngleDeg = this.magneticRotation.angleDeg;
     this.rebuildOrbitalGuideRing(aspect, this.magneticRotation.angleDeg);
-    for (let i = 0; i < this.icons.length; i++) {
-      this.icons[i].anchorGroup.position.set(
-        slots[i].position[0],
-        slots[i].position[1],
-        slots[i].position[2]
-      );
-      this.icons[i].anchorGroup.rotation.set(
-        slots[i].baseRotationX,
-        slots[i].baseRotationY,
-        slots[i].baseRotationZ
-      );
-    }
+    this.applyIconSlots(slots);
 
     const propSlots = computeDecorativePropsLayout(aspect);
     for (let i = 0; i < this.propEntries.length; i++) {
@@ -895,10 +963,6 @@ export class ShowcaseStage {
       }
     }
 
-    const targetDist = computeResponsiveCameraDistance(aspect);
-    this.camera.position.set(0, 0.15, targetDist * (aspect >= 0.85 ? 1.08 : 1.04));
-    this.controls.target.set(0, 0.15, 0);
-    this.controls.update();
     this.applyDofState();
     if (this.elapsedSec > 0 && this.heroVisible && !this.disposed && !this.contextLost) {
       if (this.composer && !this.isSoftwareGl) {
@@ -935,6 +999,45 @@ export class ShowcaseStage {
       return (hits[0].object.userData.toolId as string) || null;
     }
     return null;
+  }
+
+  private computeEntryScreenAnchor(entry: BuiltIconEntry): { x: number; y: number } {
+    entry.bodyGroup.updateWorldMatrix(true, false);
+    this.camera.updateMatrixWorld();
+    entry.bodyGroup.getWorldPosition(_vec3A);
+    _vec3A.project(this.camera);
+    const width = Math.max(1, this.container.clientWidth);
+    const height = Math.max(1, this.container.clientHeight);
+    const rawX = (_vec3A.x * 0.5 + 0.5) * width;
+    const rawY = (-_vec3A.y * 0.5 + 0.5) * height;
+    const depthScale = this.iconDepthMeta.get(entry.spec.id)?.depthScale ?? 0.9;
+    const labelLift = 44 + depthScale * 24;
+    return clampHoverTooltipPosition(rawX, rawY - labelLift, width, height);
+  }
+
+  private syncHoverFromRaycast(force = false) {
+    if (this.isDraggingScene || !this.heroVisible) return;
+    const now = performance.now();
+    if (!force && now - this.lastRaycastMs < 48) return;
+    this.lastRaycastMs = now;
+
+    const hitId = this.performRaycast();
+    if (hitId !== this.hoveredToolId) {
+      this.hoveredToolId = hitId;
+      this.renderer.domElement.style.cursor = hitId ? 'pointer' : 'grab';
+      const spec = hitId ? TOOLS_CATALOG.find((t) => t.id === hitId) ?? null : null;
+      if (hitId) {
+        const entry = this.icons.find((ic) => ic.spec.id === hitId);
+        if (entry) {
+          this.hadHoverAnchor = true;
+          this.callbacks.onHoverAnchorChange?.(this.computeEntryScreenAnchor(entry));
+        }
+      } else if (this.hadHoverAnchor) {
+        this.hadHoverAnchor = false;
+        this.callbacks.onHoverAnchorChange?.(null);
+      }
+      this.callbacks.onHoverChange?.(spec);
+    }
   }
 
   private handlePointerMove = (e: PointerEvent) => {
@@ -977,16 +1080,7 @@ export class ShowcaseStage {
       return;
     }
 
-    if (now - this.lastRaycastMs < 32) return;
-    this.lastRaycastMs = now;
-
-    const hitId = this.performRaycast();
-    if (hitId !== this.hoveredToolId) {
-      this.hoveredToolId = hitId;
-      this.renderer.domElement.style.cursor = hitId ? 'pointer' : 'grab';
-      const spec = hitId ? TOOLS_CATALOG.find((t) => t.id === hitId) ?? null : null;
-      this.callbacks.onHoverChange?.(spec);
-    }
+    this.syncHoverFromRaycast();
   };
 
   private handlePointerDown = (e: PointerEvent) => {
@@ -1029,12 +1123,17 @@ export class ShowcaseStage {
 
   private handlePointerLeave = () => {
     this.isDraggingScene = false;
+    this.pointerNdc.set(99, 99);
     this.pointerNorm.x = 0;
     this.pointerNorm.y = 0;
     this.targetPointerActive = 0;
     if (this.hoveredToolId !== null) {
       this.hoveredToolId = null;
       this.callbacks.onHoverChange?.(null);
+    }
+    if (this.hadHoverAnchor) {
+      this.hadHoverAnchor = false;
+      this.callbacks.onHoverAnchorChange?.(null);
     }
     this.renderer.domElement.style.cursor = this.selectedToolId ? 'default' : 'grab';
   };
@@ -1050,8 +1149,10 @@ export class ShowcaseStage {
       this.bloomPass.threshold = cfg.threshold;
     }
     this.renderer.toneMappingExposure = this.activePreset.exposure - cfg.exposureTrim;
-    this.iconHalos.forEach((sprite) => {
-      sprite.material.opacity = Math.max(cfg.haloOpacity, 0.34);
+    this.iconHalos.forEach((sprite, id) => {
+      const depth = this.iconDepthMeta.get(id)?.depthLayer ?? 'mid';
+      const baseHalo = depth === 'front' ? 0.42 : depth === 'back' ? 0.10 : 0.24;
+      sprite.material.opacity = Math.max(cfg.haloOpacity * (depth === 'back' ? 0.35 : 1), baseHalo);
       sprite.visible = true;
     });
   }
@@ -1199,10 +1300,11 @@ export class ShowcaseStage {
 
   private updateScene(dt: number) {
     const t = this.elapsedSec;
-    const orbitParams = getOrbitParams(this.currentAspect);
-    _orbitPlane.normal.set(0, -Math.sin(orbitParams.tiltRad), Math.cos(orbitParams.tiltRad)).normalize();
+    _orbitPlane.normal.set(0, 0, 1);
 
-    // Project cursor ray onto the tilted 3D orbit plane for responsive particle displacement
+    this.earthPlanet?.update(t);
+
+    // Project cursor ray onto the Earth orbital plane for responsive particle & ring shimmer
     let hasPointerWorld = false;
     if (this.pointerActive > 0.02 && Math.abs(this.pointerNdc.x) <= 1.2 && Math.abs(this.pointerNdc.y) <= 1.2) {
       this.raycaster.setFromCamera(this.pointerNdc, this.camera);
@@ -1213,7 +1315,7 @@ export class ShowcaseStage {
       }
     }
 
-    // Update orbit glow shader uniforms
+    // Update concentric orbital track shader uniforms & pulse line-connected star sparkles
     for (let i = 0; i < this.orbitGlowMaterials.length; i++) {
       const u = this.orbitGlowMaterials[i].uniforms;
       u.uTime.value = t;
@@ -1222,8 +1324,17 @@ export class ShowcaseStage {
         (u.uPointerPos.value as THREE.Vector3).copy(_pointerLocalOnOrbit);
       }
     }
+    for (let i = 0; i < this.sparkleSprites.length; i++) {
+      const sp = this.sparkleSprites[i];
+      const pulse = this.reducedMotion ? 1.0 : 0.92 + 0.12 * Math.sin(t * 1.7 + sp.phase);
+      sp.sprite.scale.setScalar(sp.baseScale * pulse);
+    }
 
-    // Stream luminous particles along the orbit track and move them smoothly away on mouse hover
+    if (!this.motionPaused && !this.reducedMotion) {
+      this.orbitParticleTime += dt * (this.hoveredToolId ? 0.25 : 1.0);
+    }
+
+    // Stream subtle stardust particles gently along the 5 concentric Earth orbit rings
     if (this.orbitParticles) {
       const posAttr = this.orbitParticles.geometry.getAttribute('position') as THREE.BufferAttribute;
       const positions = posAttr.array as Float32Array;
@@ -1235,9 +1346,10 @@ export class ShowcaseStage {
 
       for (let i = 0; i < this.orbitParticleMeta.length; i++) {
         const meta = this.orbitParticleMeta[i];
-        const frac = meta.baseFraction + (this.reducedMotion ? 0 : t * meta.speed);
-        const [bx, by, bz] = sampleOrbitPoint(frac, this.currentAspect, 1);
-        const wobble = this.reducedMotion ? 0 : Math.sin(t * 1.4 + meta.phase) * 0.055;
+        const thetaDeg =
+          meta.baseThetaDeg - (this.reducedMotion ? 0 : this.orbitParticleTime * meta.speedDeg);
+        const [bx, by, bz] = sampleEarthRingPoint(meta.ringIndex, thetaDeg, this.currentAspect);
+        const wobble = this.reducedMotion ? 0 : Math.sin(t * 1.1 + meta.phase) * 0.03;
         const baseX = bx + meta.radialOffset[0] + wobble;
         const baseY = by + meta.radialOffset[1] + wobble * 0.7;
         const baseZ = bz + meta.radialOffset[2];
@@ -1247,8 +1359,8 @@ export class ShowcaseStage {
               [baseX, baseY, baseZ],
               ptrLocal,
               this.pointerActive,
-              3.15,
-              1.65
+              2.8,
+              1.3
             )
           : ([0, 0, 0] as [number, number, number]);
 
@@ -1263,10 +1375,8 @@ export class ShowcaseStage {
         positions[offset + 2] = baseZ + this.orbitParticleHoverOffsets[offset + 2];
       }
       posAttr.needsUpdate = true;
-      // A restrained breathing glow keeps the orbit sparks softly luminous.
       const orbitMaterial = this.orbitParticles.material as THREE.PointsMaterial;
-      orbitMaterial.opacity = 0.76 + Math.sin(t * 1.55) * 0.045;
-      orbitMaterial.size = 0.104 + Math.sin(t * 1.2) * 0.006;
+      orbitMaterial.opacity = 0.42 + Math.sin(t * 1.4) * 0.05;
     }
 
     // Move background stardust particles through world-space Z depth + displace on cursor hover
@@ -1315,14 +1425,19 @@ export class ShowcaseStage {
       positionAttr.needsUpdate = true;
     }
 
-    // 1. Smooth continuous orbital auto-scrolling + magnetic 36-deg alignment when hovered/released
-    const shouldAutoScroll =
-      !this.motionPaused &&
-      !this.reducedMotion &&
-      !this.isDraggingScene &&
-      !this.hoveredToolId &&
-      !this.selectedToolId;
-    const autoScrollSpeed = shouldAutoScroll ? 6.0 : 0;
+    // Keep hover state synchronized even when pointer stays still as icons orbit past
+    if (!this.isDraggingScene && this.targetPointerActive > 0.5) {
+      this.syncHoverFromRaycast();
+    }
+
+    // 1. Smooth continuous orbital auto-scrolling around Earth (slows gracefully when hovering an icon)
+    const autoScrollSpeed = computeOrbitAutoScrollSpeed({
+      motionPaused: this.motionPaused,
+      reducedMotion: this.reducedMotion,
+      isDragging: this.isDraggingScene,
+      hasHoveredTool: Boolean(this.hoveredToolId),
+      hasSelectedTool: Boolean(this.selectedToolId),
+    });
 
     this.magneticRotation = stepMagneticRotation(
       this.magneticRotation,
@@ -1333,24 +1448,12 @@ export class ShowcaseStage {
     );
     if (Math.abs(this.magneticRotation.angleDeg - this.lastAppliedAngleDeg) > 1e-4) {
       this.lastAppliedAngleDeg = this.magneticRotation.angleDeg;
-      const slots = computeOrbitalLayout(
+      const slots = computeEarthConcentricLayout(
         TOOLS_CATALOG,
         this.currentAspect,
         this.magneticRotation.angleDeg
       );
-      for (let i = 0; i < this.icons.length; i++) {
-        const slot = slots[i];
-        this.icons[i].anchorGroup.position.set(
-          slot.position[0],
-          slot.position[1],
-          slot.position[2]
-        );
-        this.icons[i].anchorGroup.rotation.set(
-          slot.baseRotationX,
-          slot.baseRotationY,
-          slot.baseRotationZ
-        );
-      }
+      this.applyIconSlots(slots);
     }
 
     // 2. Smooth cursor parallax + damped drag tilt on the constellation container
@@ -1406,36 +1509,49 @@ export class ShowcaseStage {
         nextScatter.rotKick[2]
       );
 
-      // Equalize perspective depth foreshortening so all icons keep uniform screen size
+      // Apply front/mid/back depth hierarchy alongside perspective normalization
       const uniformPerspectiveScale = computeUniformScreenScaleFactor(
         camDist,
         entry.anchorGroup.position.z
       );
+      const depthMeta = this.iconDepthMeta.get(id) ?? { depthLayer: 'mid', depthScale: 0.9 };
       entry.bodyGroup.scale.setScalar(
-        entry.spec.baseScale * uniformPerspectiveScale * nextState.scale
+        entry.spec.baseScale * uniformPerspectiveScale * depthMeta.depthScale * nextState.scale
       );
 
       if (entry.spinSubGroup && !this.reducedMotion) {
         entry.spinSubGroup.rotation.z = t * 0.25 * (i % 2 === 0 ? 1 : -1);
       }
 
+      const depthEmissiveMult =
+        depthMeta.depthLayer === 'front' ? 1.12 : depthMeta.depthLayer === 'back' ? 0.5 : 0.88;
+      const depthLightTarget =
+        depthMeta.depthLayer === 'front' ? 2.9 : depthMeta.depthLayer === 'back' ? 0.65 : 1.85;
+      const depthHaloBase =
+        depthMeta.depthLayer === 'front' ? 0.42 : depthMeta.depthLayer === 'back' ? 0.1 : 0.24;
+
+      const localLight = this.iconPointLights.get(id);
+      if (localLight) {
+        localLight.intensity = depthLightTarget + Math.max(0, nextState.glowBoost) * 0.9;
+      }
+
       // Calibrated emissive modulation: white icon faces stay strictly unclipped
       for (let g = 0; g < entry.glowTargets.length; g++) {
         const gt = entry.glowTargets[g];
         if (gt.isWhite) {
-          gt.material.emissiveIntensity = gt.baseEmissive;
+          gt.material.emissiveIntensity = gt.baseEmissive * (depthMeta.depthLayer === 'back' ? 0.55 : 1.0);
         } else {
           gt.material.emissiveIntensity = Math.max(
             0.02,
-            gt.baseEmissive * bloomCfg.coloredEmissiveScale + Math.max(0, nextState.glowBoost) * 0.34
+            gt.baseEmissive * bloomCfg.coloredEmissiveScale * depthEmissiveMult +
+              Math.max(0, nextState.glowBoost) * 0.34
           );
         }
       }
 
       const halo = this.iconHalos.get(id);
       if (halo) {
-        // Persistent soft bloom for every icon, with a subtle extra lift on hover.
-        halo.material.opacity = 0.34 + Math.max(0, nextState.glowBoost) * 0.22;
+        halo.material.opacity = depthHaloBase + Math.max(0, nextState.glowBoost) * 0.22;
         halo.visible = true;
       }
     }
@@ -1504,10 +1620,17 @@ export class ShowcaseStage {
       this.hoverShaderUv.y = dampValue(this.hoverShaderUv.y, _vec3A.y * 0.5 + 0.5, 10.0, dt);
       this.hoverShaderColor.lerp(_colorA, 1 - Math.exp(-8 * dt));
       this.hoverShaderBlend = dampValue(this.hoverShaderBlend, 1.0, 6.5, dt);
+
+      this.hadHoverAnchor = true;
+      this.callbacks.onHoverAnchorChange?.(this.computeEntryScreenAnchor(activeGlowTarget));
     } else {
       this.currentFocusWorldZ = dampValue(this.currentFocusWorldZ, 0.35, 4.5, dt);
       this.hoverPointLight.intensity = dampValue(this.hoverPointLight.intensity, 0, 8.0, dt);
       this.hoverShaderBlend = dampValue(this.hoverShaderBlend, 0.0, 5.5, dt);
+      if (this.hadHoverAnchor) {
+        this.hadHoverAnchor = false;
+        this.callbacks.onHoverAnchorChange?.(null);
+      }
     }
     this.applyDofState();
 
@@ -1554,6 +1677,11 @@ export class ShowcaseStage {
     this.composer?.dispose();
     this.textures.dispose();
     this.flutedBg?.dispose();
+    this.earthPlanet?.dispose();
+    for (const tex of this.sparkleTextures) {
+      tex.dispose();
+    }
+    this.sparkleTextures = [];
     this.glbAssets?.dispose();
 
     this.scene.traverse((obj) => {

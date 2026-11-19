@@ -7,6 +7,7 @@ export interface ToolSpec {
   glbNodeName: string;
   name: string;
   shortLabel: string;
+  role: string;
   category: ToolCategory;
   accentHex: string;
   secondaryHex: string;
@@ -59,20 +60,20 @@ export interface LightingPreset {
 export const LIGHTING_PRESETS: Record<LightingPresetId, LightingPreset> = {
   obsidian: {
     id: 'obsidian',
-    label: 'Obsidian Studio',
-    bgHex: '#05060c',
-    fogHex: '#05060c',
-    fogDensity: 0.02,
-    keyColor: '#dbe4ff',
-    keyIntensity: 1.05,
-    hemiSkyColor: '#6366f1',
-    hemiGroundColor: '#090b16',
-    hemiIntensity: 0.62,
-    rimColor: '#4f46e5',
-    rimIntensity: 1.15,
-    accentColor: '#818cf8',
-    coreColor: '#6366f1',
-    exposure: 0.84,
+    label: 'Cosmic Indigo Studio',
+    bgHex: '#0b0a1f',
+    fogHex: '#0b0a1f',
+    fogDensity: 0.014,
+    keyColor: '#f4eeff',
+    keyIntensity: 1.25,
+    hemiSkyColor: '#8b7cf6',
+    hemiGroundColor: '#0c0b22',
+    hemiIntensity: 0.82,
+    rimColor: '#a78bfa',
+    rimIntensity: 1.45,
+    accentColor: '#a78bfa',
+    coreColor: '#7c3aed',
+    exposure: 0.9,
     breathCycleSec: 8.5,
     rimPulseAmount: 0.09,
     hemiPulseAmount: 0.04,
@@ -125,6 +126,7 @@ export const TOOLS_CATALOG: readonly ToolSpec[] = [
     glbNodeName: 'ChatGpt',
     name: 'ChatGPT',
     shortLabel: 'ChatGPT',
+    role: 'AI Ideation & Synthesis',
     category: 'AI Frontier',
     accentHex: '#10A37F',
     secondaryHex: '#E5E7EB',
@@ -142,6 +144,7 @@ export const TOOLS_CATALOG: readonly ToolSpec[] = [
     glbNodeName: 'Dreamweaver',
     name: 'Adobe Dreamweaver',
     shortLabel: 'Dw',
+    role: 'Web Architecture & Layout',
     category: 'Design & Illustration',
     accentHex: '#C84BFF',
     secondaryHex: '#28083B',
@@ -159,6 +162,7 @@ export const TOOLS_CATALOG: readonly ToolSpec[] = [
     glbNodeName: 'Gemini',
     name: 'Google Gemini',
     shortLabel: 'Gemini',
+    role: 'Multimodal AI Systems',
     category: 'AI Frontier',
     accentHex: '#4285F4',
     secondaryHex: '#9B72CB',
@@ -176,6 +180,7 @@ export const TOOLS_CATALOG: readonly ToolSpec[] = [
     glbNodeName: 'Illustrator',
     name: 'Adobe Illustrator',
     shortLabel: 'Ai',
+    role: 'Vector Identity & Type',
     category: 'Design & Illustration',
     accentHex: '#FF9A00',
     secondaryHex: '#330000',
@@ -193,6 +198,7 @@ export const TOOLS_CATALOG: readonly ToolSpec[] = [
     glbNodeName: 'After Effect',
     name: 'Adobe After Effects',
     shortLabel: 'Ae',
+    role: 'Motion & VFX Compositing',
     category: 'Motion & Video',
     accentHex: '#9999FF',
     secondaryHex: '#00005B',
@@ -210,6 +216,7 @@ export const TOOLS_CATALOG: readonly ToolSpec[] = [
     glbNodeName: 'Premiere Pro',
     name: 'Adobe Premiere Pro',
     shortLabel: 'Pr',
+    role: 'Editorial & Film Finishing',
     category: 'Motion & Video',
     accentHex: '#EA77FF',
     secondaryHex: '#00005B',
@@ -227,6 +234,7 @@ export const TOOLS_CATALOG: readonly ToolSpec[] = [
     glbNodeName: 'Blender',
     name: 'Blender',
     shortLabel: 'Blender',
+    role: '3D Modeling & Cycles CGI',
     category: '3D & CGI',
     accentHex: '#EA7600',
     secondaryHex: '#265787',
@@ -244,6 +252,7 @@ export const TOOLS_CATALOG: readonly ToolSpec[] = [
     glbNodeName: 'Photoshop',
     name: 'Adobe Photoshop',
     shortLabel: 'Ps',
+    role: 'Digital Imaging & Matte Art',
     category: 'Design & Illustration',
     accentHex: '#31A8FF',
     secondaryHex: '#001E36',
@@ -261,6 +270,7 @@ export const TOOLS_CATALOG: readonly ToolSpec[] = [
     glbNodeName: 'Claude',
     name: 'Claude AI',
     shortLabel: 'Claude',
+    role: 'AI Engineering & Copy',
     category: 'AI Frontier',
     accentHex: '#D97757',
     secondaryHex: '#F3C6B4',
@@ -278,6 +288,7 @@ export const TOOLS_CATALOG: readonly ToolSpec[] = [
     glbNodeName: 'Figma',
     name: 'Figma',
     shortLabel: 'Figma',
+    role: 'UI Systems & Prototyping',
     category: 'Design & Illustration',
     accentHex: '#A259FF',
     secondaryHex: '#0ACF83',
@@ -322,13 +333,211 @@ export interface OrbitParams {
   tiltRad: number;
 }
 
+export type DepthLayer = 'front' | 'mid' | 'back';
+
+export interface EarthOrbitConfig {
+  earthCenterY: number;
+  earthRadius: number;
+  earthZ: number;
+  ringRadii: readonly [number, number, number, number, number];
+  ringSpeedMultipliers: readonly [number, number, number, number, number];
+  wrapMinDeg: number;
+  wrapMaxDeg: number;
+}
+
+export interface EarthIconAssignment {
+  ringIndex: 0 | 1 | 2 | 3 | 4;
+  desktopThetaDeg: number;
+  mobileThetaDeg: number;
+  depthLayer: DepthLayer;
+  depthScale: number;
+  zOffset: number;
+}
+
+export interface EarthSparkleSpec {
+  id: string;
+  ringIndex: 0 | 1 | 2 | 3 | 4;
+  desktopThetaDeg: number;
+  mobileThetaDeg: number;
+  coreHex: string;
+  glowHex: string;
+  size: number;
+  phase: number;
+}
+
+export const EARTH_SPARKLE_SPECS: readonly EarthSparkleSpec[] = [
+  {
+    id: 'sparkle-rose',
+    ringIndex: 4,
+    desktopThetaDeg: 158,
+    mobileThetaDeg: 113,
+    coreHex: '#fce7f3',
+    glowHex: '#f472b6',
+    size: 0.72,
+    phase: 0.4,
+  },
+  {
+    id: 'sparkle-gold',
+    ringIndex: 3,
+    desktopThetaDeg: 105,
+    mobileThetaDeg: 99,
+    coreHex: '#fef3c7',
+    glowHex: '#fbbf24',
+    size: 0.7,
+    phase: 1.8,
+  },
+  {
+    id: 'sparkle-mint',
+    ringIndex: 2,
+    desktopThetaDeg: 14,
+    mobileThetaDeg: 62,
+    coreHex: '#d1fae5',
+    glowHex: '#6ee7b7',
+    size: 0.68,
+    phase: 3.3,
+  },
+];
+
+export const EARTH_ICON_ASSIGNMENTS: Record<string, EarthIconAssignment> = {
+  // Prominent foreground icons (closer in Z, slightly larger)
+  dreamweaver: { ringIndex: 3, desktopThetaDeg: 52, mobileThetaDeg: 75, depthLayer: 'front', depthScale: 1.15, zOffset: 1.85 },
+  photoshop: { ringIndex: 1, desktopThetaDeg: 154, mobileThetaDeg: 114, depthLayer: 'front', depthScale: 1.1, zOffset: 1.65 },
+  gemini: { ringIndex: 2, desktopThetaDeg: 24, mobileThetaDeg: 68, depthLayer: 'front', depthScale: 1.1, zOffset: 1.7 },
+  chatgpt: { ringIndex: 3, desktopThetaDeg: 88, mobileThetaDeg: 90, depthLayer: 'front', depthScale: 1.08, zOffset: 1.5 },
+
+  // Balanced midground icons right along the orbital ring plane
+  figma: { ringIndex: 2, desktopThetaDeg: 124, mobileThetaDeg: 110, depthLayer: 'mid', depthScale: 0.9, zOffset: 0.15 },
+  blender: { ringIndex: 1, desktopThetaDeg: 76, mobileThetaDeg: 77, depthLayer: 'mid', depthScale: 0.88, zOffset: 0.25 },
+  premiere: { ringIndex: 0, desktopThetaDeg: 134, mobileThetaDeg: 106, depthLayer: 'mid', depthScale: 0.86, zOffset: -0.1 },
+
+  // Recessed distant background icons (smaller, softer, further back in Z)
+  'after-effects': { ringIndex: 0, desktopThetaDeg: 38, mobileThetaDeg: 70, depthLayer: 'back', depthScale: 0.65, zOffset: -2.4 },
+  claude: { ringIndex: 4, desktopThetaDeg: 144, mobileThetaDeg: 104, depthLayer: 'back', depthScale: 0.68, zOffset: -2.2 },
+  illustrator: { ringIndex: 4, desktopThetaDeg: 34, mobileThetaDeg: 75, depthLayer: 'back', depthScale: 0.66, zOffset: -2.4 },
+};
+
+export function getEarthOrbitConfig(aspect = 1.6): EarthOrbitConfig {
+  const isPortrait = aspect < 0.85;
+  return isPortrait
+    ? {
+        earthCenterY: -16.8,
+        earthRadius: 8.5,
+        earthZ: -1.4,
+        ringRadii: [10.3, 12.1, 13.9, 15.7, 17.5],
+        ringSpeedMultipliers: [1.0, 1.0, 1.0, 1.0, 1.0],
+        wrapMinDeg: 44,
+        wrapMaxDeg: 136,
+      }
+    : {
+        earthCenterY: -8.35,
+        earthRadius: 5.05,
+        earthZ: -1.2,
+        ringRadii: [6.0, 6.9, 7.8, 8.7, 9.6],
+        ringSpeedMultipliers: [1.0, 1.0, 1.0, 1.0, 1.0],
+        wrapMinDeg: -14,
+        wrapMaxDeg: 194,
+      };
+}
+
+export function getOrbitCenterY(aspect = 1.6): number {
+  return getEarthOrbitConfig(aspect).earthCenterY;
+}
+
 export function getOrbitParams(aspect = 1.6): OrbitParams {
   const isPortrait = aspect < 0.85;
   return {
-    radiusX: isPortrait ? 5.0 : 9.35,
-    radiusY: isPortrait ? 5.45 : 4.08,
-    tiltRad: (22 * Math.PI) / 180,
+    radiusX: isPortrait ? 5.05 : 7.9,
+    radiusY: isPortrait ? 4.5 : 3.43,
+    tiltRad: (25 * Math.PI) / 180,
   };
+}
+
+export function wrapArcAngle(rawDeg: number, minDeg: number, maxDeg: number): number {
+  const span = Math.max(1e-6, maxDeg - minDeg);
+  return maxDeg - ((((maxDeg - rawDeg) % span) + span) % span);
+}
+
+/**
+ * Samples a 3D point strictly along one of the 5 concentric circular orbits around Earth's center.
+ */
+export function sampleEarthRingPoint(
+  ringIndex: number,
+  thetaDeg: number,
+  aspect = 1.6
+): [number, number, number] {
+  const cfg = getEarthOrbitConfig(aspect);
+  const clampedRing = Math.max(0, Math.min(4, Math.round(ringIndex))) as 0 | 1 | 2 | 3 | 4;
+  const radius = cfg.ringRadii[clampedRing];
+  const rad = (thetaDeg * Math.PI) / 180;
+  const z = -0.35 + clampedRing * 0.16;
+  return [Math.cos(rad) * radius, Math.sin(rad) * radius, z];
+}
+
+/**
+ * Projects a ring-plane anchor point `(rx, ry, ringZ)` along the camera perspective ray
+ * to true 3D depth `zOffset`, so front/mid/back icons appear locked directly onto their
+ * concentric orbital ring line while occupying authentic 3D parallax & lighting depth.
+ */
+export function alignOrbitalPointToDepthZ(
+  ringX: number,
+  ringY: number,
+  ringZ: number,
+  zOffset: number,
+  earthCenterY: number,
+  camPosZ: number,
+  cameraPivotY = 0.15
+): [number, number, number] {
+  const denom = Math.max(1.0, camPosZ - ringZ);
+  const rayScale = Math.max(0.5, (camPosZ - zOffset) / denom);
+  const localCamY = cameraPivotY - earthCenterY;
+  return [
+    ringX * rayScale,
+    localCamY + (ringY - localCamY) * rayScale,
+    zOffset,
+  ];
+}
+
+/**
+ * Computes orbital anchors for all 10 icons revolving along the 5 concentric Earth tracks
+ * with explicit foreground / midground / background depth staging.
+ */
+export function computeEarthConcentricLayout(
+  tools: readonly ToolSpec[],
+  aspect = 1.6,
+  angleOffsetDeg = 0
+): OrbitalSlot[] {
+  const cfg = getEarthOrbitConfig(aspect);
+  const isPortrait = aspect < 0.85;
+
+  return tools.map((tool, index) => {
+    const assign = EARTH_ICON_ASSIGNMENTS[tool.id] ?? {
+      ringIndex: (index % 5) as 0 | 1 | 2 | 3 | 4,
+      desktopThetaDeg: 30 + (index * 13) % 120,
+      mobileThetaDeg: 65 + (index * 6) % 50,
+      depthLayer: 'mid' as DepthLayer,
+      depthScale: 0.9,
+      zOffset: 0,
+    };
+    const baseTheta = isPortrait ? assign.mobileThetaDeg : assign.desktopThetaDeg;
+    const speedMult = cfg.ringSpeedMultipliers[assign.ringIndex];
+    const thetaDeg = wrapArcAngle(
+      baseTheta - angleOffsetDeg * speedMult,
+      cfg.wrapMinDeg,
+      cfg.wrapMaxDeg
+    );
+    const [x, y] = sampleEarthRingPoint(assign.ringIndex, thetaDeg, aspect);
+
+    return {
+      id: tool.id,
+      position: [x, y, assign.zOffset],
+      baseRotationY: Math.atan2(-x, 18 - assign.zOffset) * 0.32,
+      baseRotationX: (y / 14) * 0.05,
+      baseRotationZ: -(x / 14) * 0.035,
+      ringIndex: assign.ringIndex,
+      depthLayer: assign.depthLayer,
+      depthScale: assign.depthScale,
+    };
+  });
 }
 
 interface OrbitArcLut {
@@ -417,6 +626,9 @@ export interface OrbitalSlot {
   baseRotationY: number;
   baseRotationX: number;
   baseRotationZ: number;
+  ringIndex?: 0 | 1 | 2 | 3 | 4;
+  depthLayer?: DepthLayer;
+  depthScale?: number;
 }
 
 export function computeOrbitalLayout(
@@ -515,10 +727,56 @@ export function dampValue(current: number, target: number, lambda: number, dt: n
   return current + (target - current) * alpha;
 }
 
+export const ORBIT_NORMAL_SPEED_DEG_PER_SEC = 3.2;
+export const ORBIT_HOVER_SLOW_SPEED_DEG_PER_SEC = 0.55;
+
+/**
+ * Computes continuous orbital rotation speed (deg/s):
+ * slows gracefully (~17% pace) while hovering an icon so users can inspect it effortlessly,
+ * without stopping abruptly or triggering a magnetic snap away from the cursor.
+ */
+export function computeOrbitAutoScrollSpeed(options: {
+  motionPaused: boolean;
+  reducedMotion: boolean;
+  isDragging: boolean;
+  hasHoveredTool: boolean;
+  hasSelectedTool: boolean;
+}): number {
+  if (
+    options.motionPaused ||
+    options.reducedMotion ||
+    options.isDragging ||
+    options.hasSelectedTool
+  ) {
+    return 0;
+  }
+  return options.hasHoveredTool
+    ? ORBIT_HOVER_SLOW_SPEED_DEG_PER_SEC
+    : ORBIT_NORMAL_SPEED_DEG_PER_SEC;
+}
+
+/**
+ * Clamps a 2D hover label position cleanly within viewport safe bounds.
+ */
+export function clampHoverTooltipPosition(
+  screenX: number,
+  screenY: number,
+  viewportWidth: number,
+  viewportHeight: number
+): { x: number; y: number } {
+  const padX = Math.min(120, viewportWidth * 0.24);
+  const topSafe = 72;
+  const bottomSafe = 24;
+  return {
+    x: Math.max(padX, Math.min(viewportWidth - padX, screenX)),
+    y: Math.max(topSafe, Math.min(viewportHeight - bottomSafe, screenY)),
+  };
+}
+
 /**
  * Updates hover/selection kinematics smoothly:
- * - Hovered or selected icons glide forward along Z (+0.78 / +0.95),
- *   scale up (+14% / +18%), and boost rim/emissive illumination.
+ * - Hovered or selected icons glide forward along Z (+0.95 / +1.05),
+ *   scale up (+24% / +28%), and boost rim/emissive illumination.
  */
 export function stepHoverKinematics(
   current: HoverKinematicsState,
@@ -527,14 +785,14 @@ export function stepHoverKinematics(
   dt: number,
   hasOtherFocus = false
 ): HoverKinematicsState {
-  const targetZ = isSelected ? 0.95 : isHovered ? 0.78 : hasOtherFocus ? -0.45 : 0;
-  const targetScale = isSelected ? 1.18 : isHovered ? 1.14 : hasOtherFocus ? 0.9 : 1.0;
-  const targetGlow = isSelected ? 1.0 : isHovered ? 0.85 : hasOtherFocus ? -0.25 : 0;
+  const targetZ = isSelected ? 1.05 : isHovered ? 0.95 : hasOtherFocus ? -0.45 : 0;
+  const targetScale = isSelected ? 1.28 : isHovered ? 1.24 : hasOtherFocus ? 0.9 : 1.0;
+  const targetGlow = isSelected ? 1.0 : isHovered ? 0.9 : hasOtherFocus ? -0.25 : 0;
 
   return {
-    zPull: dampValue(current.zPull, targetZ, 7.5, dt),
-    scale: dampValue(current.scale, targetScale, 8.0, dt),
-    glowBoost: dampValue(current.glowBoost, targetGlow, 7.0, dt),
+    zPull: dampValue(current.zPull, targetZ, 8.5, dt),
+    scale: dampValue(current.scale, targetScale, 9.0, dt),
+    glowBoost: dampValue(current.glowBoost, targetGlow, 7.5, dt),
   };
 }
 
@@ -949,15 +1207,15 @@ export function computeDecorativePropsLayout(aspect = 1.6): DecorativePropSlot[]
   return [
     {
       nodeName: 'bubble_right',
-      position: isPortrait ? [5.6, 5.4, 0.6] : [9.8, 4.35, 0.4],
+      position: isPortrait ? [5.4, 4.4, 0.6] : [9.7, 3.3, 0.4],
       rotation: [0.06, -0.18, 0.04],
-      targetSize: 0.9,
+      targetSize: 0.88,
       phase: 0.5,
       isSparkle: false,
     },
     {
       nodeName: 'deco_triangle',
-      position: isPortrait ? [6.35, 1.35, -0.5] : [10.65, 1.85, -0.5],
+      position: isPortrait ? [6.2, 1.15, -0.5] : [10.4, 1.25, -0.5],
       rotation: [0.15, -0.35, 0.25],
       targetSize: 0.44,
       phase: 1.6,
@@ -965,47 +1223,47 @@ export function computeDecorativePropsLayout(aspect = 1.6): DecorativePropSlot[]
     },
     {
       nodeName: 'exclaim_left_dot',
-      position: isPortrait ? [-6.4, -0.9, 0.5] : [-10.65, -0.85, 0.5],
+      position: isPortrait ? [-6.2, -0.9, 0.5] : [-10.35, -0.85, 0.5],
       rotation: [0.05, 0.2, -0.22],
-      targetSize: 0.56,
+      targetSize: 0.54,
       phase: 2.3,
       isSparkle: false,
     },
     {
       nodeName: 'exclaim_right_dot',
-      position: isPortrait ? [-5.6, 5.1, 0.4] : [-9.2, 3.85, 0.4],
+      position: isPortrait ? [-5.4, 4.2, 0.4] : [-9.1, 3.1, 0.4],
       rotation: [0.04, 0.14, 0.18],
-      targetSize: 0.52,
+      targetSize: 0.5,
       phase: 3.1,
       isSparkle: false,
     },
     {
       nodeName: 'sparkle_1',
-      position: isPortrait ? [-5.5, -5.2, 0.7] : [-8.8, -3.75, 0.7],
+      position: isPortrait ? [-5.3, -4.4, 0.7] : [-8.6, -3.25, 0.7],
       rotation: [0, 0, 0.15],
-      targetSize: 0.36,
+      targetSize: 0.34,
       phase: 0.9,
       isSparkle: true,
     },
     {
       nodeName: 'sparkle_2',
-      position: isPortrait ? [-2.8, 6.7, -0.3] : [-5.2, 4.95, -0.3],
+      position: isPortrait ? [-2.7, 5.7, -0.3] : [-5.1, 4.05, -0.3],
       rotation: [0, 0, -0.12],
-      targetSize: 0.28,
+      targetSize: 0.26,
       phase: 1.9,
       isSparkle: true,
     },
     {
       nodeName: 'sparkle_3',
-      position: isPortrait ? [2.8, 6.8, 0.5] : [5.2, 4.95, 0.5],
+      position: isPortrait ? [2.7, 5.7, 0.5] : [5.1, 4.05, 0.5],
       rotation: [0, 0, 0.22],
-      targetSize: 0.32,
+      targetSize: 0.3,
       phase: 2.8,
       isSparkle: true,
     },
     {
       nodeName: 'sparkle_4',
-      position: isPortrait ? [-2.8, -6.7, 0.4] : [-5.2, -4.85, 0.4],
+      position: isPortrait ? [-2.7, -5.7, 0.4] : [-5.1, -4.1, 0.4],
       rotation: [0, 0, 0.08],
       targetSize: 0.26,
       phase: 3.7,
@@ -1013,9 +1271,9 @@ export function computeDecorativePropsLayout(aspect = 1.6): DecorativePropSlot[]
     },
     {
       nodeName: 'sparkle_5',
-      position: isPortrait ? [5.5, -5.0, 0.55] : [8.8, -3.75, 0.55],
+      position: isPortrait ? [5.3, -4.4, 0.55] : [8.6, -3.25, 0.55],
       rotation: [0, 0, -0.18],
-      targetSize: 0.3,
+      targetSize: 0.28,
       phase: 4.5,
       isSparkle: true,
     },

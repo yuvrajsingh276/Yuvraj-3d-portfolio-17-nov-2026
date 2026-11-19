@@ -33,7 +33,7 @@ export const SECTION_THEMES: Record<PageSectionId, SectionTheme> = {
     label: 'Home',
     accentHex: '#a78bfa',
     accentGlow: 'rgba(167, 139, 250, 0.5)',
-    surfaceBg: '#010207',
+    surfaceBg: '#0b0a1f',
   },
   video: {
     id: 'video',
