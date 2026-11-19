@@ -390,57 +390,11 @@ export class ShowcaseStage {
     this.orbitGuideRing.visible = true;
   }
 
-  private createSparkleCrossTexture(coreHex: string, glowHex: string): THREE.CanvasTexture {
-    const size = 128;
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d')!;
-    const c = size / 2;
-
-    const glowColor = new THREE.Color(glowHex);
-    const gr = Math.round(glowColor.r * 255);
-    const gg = Math.round(glowColor.g * 255);
-    const gb = Math.round(glowColor.b * 255);
-
-    const halo = ctx.createRadialGradient(c, c, 0, c, c, size * 0.48);
-    halo.addColorStop(0, `rgba(${gr}, ${gg}, ${gb}, 0.72)`);
-    halo.addColorStop(0.35, `rgba(${gr}, ${gg}, ${gb}, 0.24)`);
-    halo.addColorStop(1, `rgba(${gr}, ${gg}, ${gb}, 0)`);
-    ctx.fillStyle = halo;
-    ctx.beginPath();
-    ctx.arc(c, c, size * 0.48, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Crisp 4-point cross flare connected cleanly on the orbital track
-    const outerR = size * 0.42;
-    const waist = size * 0.065;
-    ctx.fillStyle = coreHex;
-    ctx.beginPath();
-    ctx.moveTo(c, c - outerR);
-    ctx.quadraticCurveTo(c + waist * 0.45, c - waist * 0.45, c + outerR, c);
-    ctx.quadraticCurveTo(c + waist * 0.45, c + waist * 0.45, c, c + outerR);
-    ctx.quadraticCurveTo(c - waist * 0.45, c + waist * 0.45, c - outerR, c);
-    ctx.quadraticCurveTo(c - waist * 0.45, c - waist * 0.45, c, c - outerR);
-    ctx.closePath();
-    ctx.fill();
-
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
-  }
-
-  /** Renders 5 crisp concentric circular orbital lines + 3 line-connected colored star sparkles. */
+  /** Renders 5 crisp concentric circular orbital lines. */
   private rebuildOrbitalGuideRing(aspect: number, _angleOffsetDeg: number) {
     if (!this.orbitGuideRing) return;
 
     this.orbitGlowMaterials = [];
-    this.sparkleSprites = [];
-    for (const tex of this.sparkleTextures) {
-      tex.dispose();
-    }
-    this.sparkleTextures = [];
-
     for (const child of [...this.orbitGuideRing.children]) {
       this.orbitGuideRing.remove(child);
       if ((child as THREE.Mesh).isMesh) {
@@ -514,29 +468,6 @@ export class ShowcaseStage {
       ringMesh.renderOrder = -20 + ringIndex;
       this.orbitGuideRing?.add(ringMesh);
     });
-
-    // Attach colored 4-point cross star sparkles directly ON the concentric orbital lines
-    for (const sp of EARTH_SPARKLE_SPECS) {
-      const tex = this.createSparkleCrossTexture(sp.coreHex, sp.glowHex);
-      this.sparkleTextures.push(tex);
-      const spMat = new THREE.SpriteMaterial({
-        map: tex,
-        transparent: true,
-        opacity: 0.96,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        depthTest: false,
-      });
-      const sprite = new THREE.Sprite(spMat);
-      const thetaDeg = isPortrait ? sp.mobileThetaDeg : sp.desktopThetaDeg;
-      const [sx, sy, sz] = sampleEarthRingPoint(sp.ringIndex, thetaDeg, aspect);
-      const baseScale = sp.size * (isPortrait ? 1.55 : 1.0);
-      sprite.position.set(sx, sy, sz + 0.06);
-      sprite.scale.setScalar(baseScale);
-      sprite.renderOrder = -10 + sp.ringIndex;
-      this.orbitGuideRing?.add(sprite);
-      this.sparkleSprites.push({ sprite, baseScale, phase: sp.phase });
-    }
   }
   private initScatterBurstParticles() {
     const count = 36;
@@ -613,8 +544,8 @@ export class ShowcaseStage {
           prop.anchorGroup.position.set(slot.position[0], slot.position[1], slot.position[2]);
           prop.anchorGroup.rotation.set(slot.rotation[0], slot.rotation[1], slot.rotation[2]);
         }
-        // Keep cartoon props hidden so clean concentric Earth orbital tracks take visual focus
-        prop.anchorGroup.visible = false;
+        // Render GLB star/sparkle icons in orbit, keep non-sparkle props hidden
+        prop.anchorGroup.visible = slot ? slot.isSparkle : false;
         this.constellationGroup.add(prop.anchorGroup);
         this.propEntries.push(prop);
       }

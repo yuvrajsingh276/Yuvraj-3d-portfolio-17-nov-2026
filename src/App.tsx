@@ -181,13 +181,7 @@ export default function App() {
           e.currentTarget.style.setProperty('--pointer-x', e.clientX + 'px');
           e.currentTarget.style.setProperty('--pointer-y', e.clientY + 'px');
         }}
-        style={{
-          backgroundImage: "url('/assets/aistudio/image_58ae28dc.png')",
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-        }}
-        className="fixed inset-0 z-0 h-screen w-screen overflow-hidden bg-[#060515]"
+        className="fixed inset-0 z-0 h-screen w-screen overflow-hidden bg-[#0a091d]"
         data-selected-tool={selectedTool?.id ?? 'none'}
         data-hovered-tool={hoveredTool?.id ?? 'none'}
         data-motion-paused={String(motionPaused)}
@@ -337,35 +331,8 @@ export default function App() {
             ))}
           </nav>
 
-          {/* Zone 3: Single primary action + mobile menu toggle */}
+          {/* Zone 3: Mobile menu toggle */}
           <div className="flex shrink-0 items-center gap-3">
-            <a
-              href="#about"
-              onClick={(e) => handleNavClick(e, 'about')}
-              style={
-                !navScrolled && currentSection === 'home'
-                  ? undefined
-                  : {
-                      borderColor: `${activeTheme.accentHex}59`,
-                      backgroundColor: `${activeTheme.accentHex}1f`,
-                    }
-              }
-              className={
-                !navScrolled && currentSection === 'home'
-                  ? 'inline-flex min-h-[38px] shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-white px-5 py-2 text-xs font-semibold tracking-[0.02em] text-[#07112b] shadow-[0_0_24px_rgba(255,255,255,0.42)] transition-all duration-200 hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(255,255,255,0.68)]'
-                  : 'inline-flex min-h-[40px] shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border px-4 py-2 portfolio-meta font-medium tracking-[0.04em] text-white transition-all duration-200 hover:brightness-125'
-              }
-            >
-              {(navScrolled || currentSection !== 'home') && (
-                <span
-                  aria-hidden="true"
-                  className="h-1.5 w-1.5 rounded-full transition-colors duration-300"
-                  style={{ backgroundColor: activeTheme.accentHex }}
-                />
-              )}
-              <span>{"Let's Talk"}</span>
-            </a>
-
             <button
               type="button"
               onClick={() => setMobileMenuOpen((prev) => !prev)}

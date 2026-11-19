@@ -144,7 +144,13 @@ function buildGlbIconEntry(
 
   const glowTargets: BuiltIconEntry['glowTargets'] = [];
   const cloned = cloneNodeWithUniqueMaterials(sourceNode, isSoftwareGl, glowTargets);
-  const normalizedGroup = normalizeModelGroup(cloned, 1.44);
+  let hash = 0;
+  for (let i = 0; i < spec.id.length; i++) {
+    hash = (hash * 31 + spec.id.charCodeAt(i)) % 1000;
+  }
+  const sizeFactor = 0.85 + (hash / 1000) * 0.3;
+  const baseTargetDim = 1.44 * 0.8; // 20% smaller
+  const normalizedGroup = normalizeModelGroup(cloned, baseTargetDim * sizeFactor);
   bodyGroup.add(normalizedGroup);
 
   const hitMat = new THREE.MeshBasicMaterial({
