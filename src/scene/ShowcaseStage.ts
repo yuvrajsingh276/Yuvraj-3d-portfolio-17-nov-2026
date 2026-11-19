@@ -8,6 +8,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 import {
+  CAMERA_BLENDER_VIEW,
   TOOLS_CATALOG,
   LIGHTING_PRESETS,
   computeResponsiveCameraDistance,
@@ -245,7 +246,7 @@ export class ShowcaseStage {
 
     this.scene = new THREE.Scene();
     this.scene.background = null;
-    this.scene.fog = new THREE.FogExp2('#080b18', 0.012);
+    this.scene.fog = null;
 
     const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
     this.scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
@@ -255,8 +256,17 @@ export class ShowcaseStage {
     this.textures = createProceduralTextures(maxAnisotropy);
 
     const camDist = computeResponsiveCameraDistance(aspect);
-    this.camera = new THREE.PerspectiveCamera(44, aspect, 0.1, 120);
-    this.camera.position.set(0, 0.15, camDist * (aspect >= 0.85 ? 1.08 : 1.04));
+    this.camera = new THREE.PerspectiveCamera(CAMERA_BLENDER_VIEW.fov, aspect, 0.1, 150);
+    this.camera.position.set(
+      CAMERA_BLENDER_VIEW.position[0],
+      CAMERA_BLENDER_VIEW.position[1],
+      camDist
+    );
+    this.camera.lookAt(
+      CAMERA_BLENDER_VIEW.target[0],
+      CAMERA_BLENDER_VIEW.target[1],
+      CAMERA_BLENDER_VIEW.target[2]
+    );
 
     if (!this.isSoftwareGl && (this.bloomIntensity > 0.001 || this.dofStrength > 0.001)) {
       const initDof = computeDofConfig(camDist, this.currentFocusWorldZ, this.dofStrength);
@@ -565,7 +575,7 @@ export class ShowcaseStage {
 
     try {
       const assets = await loadGlbShowcaseAssets(
-        '/models/computer-v4.glb',
+        '/models/icon-with-orbit.glb',
         '/draco/',
         this.isSoftwareGl,
         aspect
@@ -653,7 +663,8 @@ export class ShowcaseStage {
         ringZ,
         slot.position[2],
         earthCfg.earthCenterY,
-        camPosZ
+        camPosZ,
+        CAMERA_BLENDER_VIEW.position[1]
       );
       this.icons[i].anchorGroup.position.set(ax, ay, az);
       this.icons[i].anchorGroup.rotation.set(
@@ -822,7 +833,11 @@ export class ShowcaseStage {
     this.controls.enableZoom = false;
     this.controls.enablePan = false;
     this.controls.autoRotate = false;
-    this.controls.target.set(0, 0.15, 0);
+    this.controls.target.set(
+      CAMERA_BLENDER_VIEW.target[0],
+      CAMERA_BLENDER_VIEW.target[1],
+      CAMERA_BLENDER_VIEW.target[2]
+    );
     this.controls.update();
   }
 
@@ -942,8 +957,17 @@ export class ShowcaseStage {
     _orbitPlane.setFromNormalAndCoplanarPoint(_vec3A, this.constellationGroup.position);
 
     const targetDist = computeResponsiveCameraDistance(aspect);
-    this.camera.position.set(0, 0.15, targetDist * (aspect >= 0.85 ? 1.08 : 1.04));
-    this.controls.target.set(0, 0.15, 0);
+    this.camera.fov = CAMERA_BLENDER_VIEW.fov;
+    this.camera.position.set(
+      CAMERA_BLENDER_VIEW.position[0],
+      CAMERA_BLENDER_VIEW.position[1],
+      targetDist
+    );
+    this.controls.target.set(
+      CAMERA_BLENDER_VIEW.target[0],
+      CAMERA_BLENDER_VIEW.target[1],
+      CAMERA_BLENDER_VIEW.target[2]
+    );
     this.controls.update();
 
     const slots = computeEarthConcentricLayout(TOOLS_CATALOG, aspect, this.magneticRotation.angleDeg);
@@ -1182,7 +1206,7 @@ export class ShowcaseStage {
     const preset = LIGHTING_PRESETS[presetId];
     this.activePreset = preset;
     this.scene.background = null;
-    this.scene.fog = new THREE.FogExp2('#080b18', 0.006);
+    this.scene.fog = null;
 
     this.keyLight.color.set(preset.keyColor);
     this.keyLight.intensity = preset.keyIntensity;

@@ -181,7 +181,13 @@ export default function App() {
           e.currentTarget.style.setProperty('--pointer-x', e.clientX + 'px');
           e.currentTarget.style.setProperty('--pointer-y', e.clientY + 'px');
         }}
-        className="fixed inset-0 z-0 h-screen w-screen overflow-hidden bg-[#0a091d]"
+        style={{
+          backgroundImage: "url('/assets/aistudio/image_58ae28dc.png')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+        className="fixed inset-0 z-0 h-screen w-screen overflow-hidden bg-[#060515]"
         data-selected-tool={selectedTool?.id ?? 'none'}
         data-hovered-tool={hoveredTool?.id ?? 'none'}
         data-motion-paused={String(motionPaused)}

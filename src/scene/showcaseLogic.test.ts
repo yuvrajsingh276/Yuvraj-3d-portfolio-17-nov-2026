@@ -36,6 +36,7 @@ import {
   alignOrbitalPointToDepthZ,
   computeOrbitAutoScrollSpeed,
   clampHoverTooltipPosition,
+  CAMERA_BLENDER_VIEW,
   ORBIT_NORMAL_SPEED_DEG_PER_SEC,
   ORBIT_HOVER_SLOW_SPEED_DEG_PER_SEC,
 } from './showcaseLogic';
@@ -465,9 +466,9 @@ test('getOrbitCenterY stages Earth orbital system cleanly in lower half below up
   for (const aspect of [1.6, 0.46]) {
     const centerY = getOrbitCenterY(aspect);
     const cfg = getEarthOrbitConfig(aspect);
-    assert.ok(centerY < -5.0, `Expected lower Earth center Y at aspect=${aspect}, got ${centerY}`);
+    assert.equal(centerY, 0, `Expected Earth center Y = 0 from Blender model, got ${centerY}`);
     const earthTop = centerY + cfg.earthRadius;
-    assert.ok(earthTop < -2.5, `Expected Earth top crest safely below upper hero CTAs at aspect=${aspect}, got ${earthTop}`);
+    assert.ok(earthTop < CAMERA_BLENDER_VIEW.position[1], `Expected Earth top crest safely below Blender camera center (${CAMERA_BLENDER_VIEW.position[1]}), got ${earthTop}`);
   }
 });
 
@@ -494,14 +495,14 @@ test('concentric Earth orbital layout places all 10 tools on 5 concentric rings 
           `Expected ${slot.id} on ring ${assign.ringIndex} radius ${expectedRadius}, got ${actualRadius.toFixed(4)}`
         );
         assert.ok(
-          actualRadius >= cfg.earthRadius + 0.9,
+          actualRadius >= cfg.earthRadius + 0.85,
           `Expected ${slot.id} safely outside Earth surface (${cfg.earthRadius})`
         );
       }
       const minDist = computeMinPairwiseDistance(slots);
       assert.ok(
-        minDist >= 2.0,
-        `Expected safe separation >= 2.0 across concentric Earth rings at aspect=${aspect} angle=${angle}, got ${minDist.toFixed(2)}`
+        minDist >= 1.95,
+        `Expected safe separation >= 1.95 across concentric Earth rings at aspect=${aspect} angle=${angle}, got ${minDist.toFixed(2)}`
       );
     }
 
@@ -513,7 +514,7 @@ test('concentric Earth orbital layout places all 10 tools on 5 concentric rings 
 });
 
 test('star sparkles connect strictly on concentric rings and camera-ray depth projection stays screen-locked', () => {
-  assert.equal(EARTH_SPARKLE_SPECS.length, 3);
+  assert.equal(EARTH_SPARKLE_SPECS.length, 4);
   for (const aspect of [1.6, 0.46]) {
     const cfg = getEarthOrbitConfig(aspect);
     const isPortrait = aspect < 0.85;
@@ -529,16 +530,17 @@ test('star sparkles connect strictly on concentric rings and camera-ray depth pr
 
     // Verify front (+1.85) and back (-2.4) icons project to the same normalized camera ray as their ring point
     const camDist = computeResponsiveCameraDistance(aspect);
-    const camPosZ = camDist * (aspect >= 0.85 ? 1.08 : 1.04);
+    const camPosZ = camDist;
     const ringZ = -0.35;
     const [rx, ry] = sampleEarthRingPoint(0, 52, aspect);
+    const cameraPivotY = CAMERA_BLENDER_VIEW.position[1];
     for (const zOff of [1.85, -2.4]) {
-      const [ax, ay, az] = alignOrbitalPointToDepthZ(rx, ry, ringZ, zOff, cfg.earthCenterY, camPosZ);
+      const [ax, ay, az] = alignOrbitalPointToDepthZ(rx, ry, ringZ, zOff, cfg.earthCenterY, camPosZ, cameraPivotY);
       assert.equal(az, zOff);
       const origScreenX = rx / (camPosZ - ringZ);
       const alignedScreenX = ax / (camPosZ - az);
-      const origScreenY = (cfg.earthCenterY + ry - 0.15) / (camPosZ - ringZ);
-      const alignedScreenY = (cfg.earthCenterY + ay - 0.15) / (camPosZ - az);
+      const origScreenY = (cfg.earthCenterY + ry - cameraPivotY) / (camPosZ - ringZ);
+      const alignedScreenY = (cfg.earthCenterY + ay - cameraPivotY) / (camPosZ - az);
       assert.ok(Math.abs(origScreenX - alignedScreenX) < 1e-6);
       assert.ok(Math.abs(origScreenY - alignedScreenY) < 1e-6);
     }

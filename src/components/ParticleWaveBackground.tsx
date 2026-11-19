@@ -25,7 +25,7 @@ export function ParticleWaveBackground() {
   useEffect(() => {
     const canvas = canvasRef.current;
     const host = canvas?.parentElement;
-    const ctx = canvas?.getContext('2d', { alpha: false, desynchronized: true });
+    const ctx = canvas?.getContext('2d', { alpha: true });
     if (!canvas || !host || !ctx) return;
 
     let width = 1;
@@ -89,46 +89,8 @@ export function ParticleWaveBackground() {
     };
 
     const draw = (time: number) => {
-      // Deep cosmic indigo-violet midnight gradient matching attached planet orbit reference
-      const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
-      skyGrad.addColorStop(0, '#0a091d');
-      skyGrad.addColorStop(0.32, '#100f2e');
-      skyGrad.addColorStop(0.68, '#171342');
-      skyGrad.addColorStop(1, '#080718');
-      ctx.fillStyle = skyGrad;
-      ctx.fillRect(0, 0, width, height);
-
-      // Subtle violet-indigo atmospheric sky bloom rising behind Earth horizon
-      const shiftX = (pointerX - 0.5) * width * 0.035;
-      const horizonAura = ctx.createRadialGradient(
-        width * 0.5 + shiftX,
-        height * 0.72,
-        width * 0.04,
-        width * 0.5 + shiftX,
-        height * 0.72,
-        Math.max(width, height) * 0.58
-      );
-      horizonAura.addColorStop(0, 'rgba(139, 92, 246, 0.22)');
-      horizonAura.addColorStop(0.36, 'rgba(99, 76, 214, 0.14)');
-      horizonAura.addColorStop(0.7, 'rgba(34, 28, 86, 0.06)');
-      horizonAura.addColorStop(1, 'rgba(10, 9, 29, 0)');
-      ctx.fillStyle = horizonAura;
-      ctx.fillRect(0, 0, width, height);
-
-      // Gentle upper subtle indigo sheen behind hero headline
-      const topGlow = ctx.createRadialGradient(
-        width * 0.5 + shiftX * 0.6,
-        height * 0.18,
-        0,
-        width * 0.5,
-        height * 0.22,
-        Math.max(width, height) * 0.55
-      );
-      topGlow.addColorStop(0, 'rgba(86, 75, 196, 0.16)');
-      topGlow.addColorStop(0.55, 'rgba(38, 32, 98, 0.06)');
-      topGlow.addColorStop(1, 'rgba(10, 9, 29, 0)');
-      ctx.fillStyle = topGlow;
-      ctx.fillRect(0, 0, width, height);
+      // Clear transparent canvas so hero background image renders crisply beneath
+      ctx.clearRect(0, 0, width, height);
 
       // Interactive pointer aura
       if (pointerInside) {

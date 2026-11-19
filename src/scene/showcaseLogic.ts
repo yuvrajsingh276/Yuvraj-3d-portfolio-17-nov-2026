@@ -303,19 +303,26 @@ export const TOOLS_CATALOG: readonly ToolSpec[] = [
   },
 ];
 
+export const CAMERA_BLENDER_VIEW = {
+  position: [0.2468845, 6.214279, 25.984135] as const,
+  target: [0.2468845, 6.214279, 0] as const,
+  fov: 27.1075267,
+  aspect: 1.7777777777777777,
+};
+
 /**
- * Computes responsive camera orbit distance so the full constellation frames
- * comfortably on ultrawide, standard desktop, tablet, and narrow mobile screens.
+ * Computes responsive camera orbit distance matching Blender camera view in Icon with orbit.glb:
+ * 25.984 on desktop, pulling back smoothly on tablet and narrow mobile screens.
  */
 export function computeResponsiveCameraDistance(aspect: number): number {
   const safeAspect = Math.max(0.4, Math.min(2.6, aspect || 1.6));
-  if (safeAspect < 0.75) {
-    return 39.5;
+  if (safeAspect >= 1.25) {
+    return 25.984135;
   }
-  if (safeAspect < 1.15) {
-    return 25.4;
+  if (safeAspect >= 0.85) {
+    return 32.5;
   }
-  return 18.6;
+  return 42.0;
 }
 
 /**
@@ -367,76 +374,70 @@ export interface EarthSparkleSpec {
 
 export const EARTH_SPARKLE_SPECS: readonly EarthSparkleSpec[] = [
   {
-    id: 'sparkle-rose',
-    ringIndex: 4,
-    desktopThetaDeg: 158,
-    mobileThetaDeg: 113,
-    coreHex: '#fce7f3',
-    glowHex: '#f472b6',
-    size: 0.72,
-    phase: 0.4,
-  },
-  {
     id: 'sparkle-gold',
-    ringIndex: 3,
-    desktopThetaDeg: 105,
-    mobileThetaDeg: 99,
+    ringIndex: 0,
+    desktopThetaDeg: 144.6,
+    mobileThetaDeg: 144.6,
     coreHex: '#fef3c7',
     glowHex: '#fbbf24',
     size: 0.7,
-    phase: 1.8,
+    phase: 0.4,
   },
   {
     id: 'sparkle-mint',
-    ringIndex: 2,
-    desktopThetaDeg: 14,
-    mobileThetaDeg: 62,
+    ringIndex: 1,
+    desktopThetaDeg: 355.1,
+    mobileThetaDeg: 355.1,
     coreHex: '#d1fae5',
     glowHex: '#6ee7b7',
     size: 0.68,
+    phase: 1.2,
+  },
+  {
+    id: 'sparkle-rose',
+    ringIndex: 2,
+    desktopThetaDeg: 161.3,
+    mobileThetaDeg: 161.3,
+    coreHex: '#fce7f3',
+    glowHex: '#f472b6',
+    size: 0.72,
+    phase: 2.1,
+  },
+  {
+    id: 'sparkle-indigo',
+    ringIndex: 3,
+    desktopThetaDeg: 31.6,
+    mobileThetaDeg: 31.6,
+    coreHex: '#c7d2fe',
+    glowHex: '#818cf8',
+    size: 0.75,
     phase: 3.3,
   },
 ];
 
 export const EARTH_ICON_ASSIGNMENTS: Record<string, EarthIconAssignment> = {
-  // Prominent foreground icons (closer in Z, slightly larger)
-  dreamweaver: { ringIndex: 3, desktopThetaDeg: 52, mobileThetaDeg: 75, depthLayer: 'front', depthScale: 1.15, zOffset: 1.85 },
-  photoshop: { ringIndex: 1, desktopThetaDeg: 154, mobileThetaDeg: 114, depthLayer: 'front', depthScale: 1.1, zOffset: 1.65 },
-  gemini: { ringIndex: 2, desktopThetaDeg: 24, mobileThetaDeg: 68, depthLayer: 'front', depthScale: 1.1, zOffset: 1.7 },
-  chatgpt: { ringIndex: 3, desktopThetaDeg: 88, mobileThetaDeg: 90, depthLayer: 'front', depthScale: 1.08, zOffset: 1.5 },
-
-  // Balanced midground icons right along the orbital ring plane
-  figma: { ringIndex: 2, desktopThetaDeg: 124, mobileThetaDeg: 110, depthLayer: 'mid', depthScale: 0.9, zOffset: 0.15 },
-  blender: { ringIndex: 1, desktopThetaDeg: 76, mobileThetaDeg: 77, depthLayer: 'mid', depthScale: 0.88, zOffset: 0.25 },
-  premiere: { ringIndex: 0, desktopThetaDeg: 134, mobileThetaDeg: 106, depthLayer: 'mid', depthScale: 0.86, zOffset: -0.1 },
-
-  // Recessed distant background icons (smaller, softer, further back in Z)
-  'after-effects': { ringIndex: 0, desktopThetaDeg: 38, mobileThetaDeg: 70, depthLayer: 'back', depthScale: 0.65, zOffset: -2.4 },
-  claude: { ringIndex: 4, desktopThetaDeg: 144, mobileThetaDeg: 104, depthLayer: 'back', depthScale: 0.68, zOffset: -2.2 },
-  illustrator: { ringIndex: 4, desktopThetaDeg: 34, mobileThetaDeg: 75, depthLayer: 'back', depthScale: 0.66, zOffset: -2.4 },
+  dreamweaver: { ringIndex: 0, desktopThetaDeg: 164.0, mobileThetaDeg: 164.0, depthLayer: 'front', depthScale: 1.05, zOffset: 0.65 },
+  illustrator: { ringIndex: 0, desktopThetaDeg: 339.5, mobileThetaDeg: 339.5, depthLayer: 'back', depthScale: 0.85, zOffset: 0.28 },
+  photoshop: { ringIndex: 1, desktopThetaDeg: 90.3, mobileThetaDeg: 90.3, depthLayer: 'front', depthScale: 1.15, zOffset: 0.16 },
+  claude: { ringIndex: 2, desktopThetaDeg: 12.7, mobileThetaDeg: 12.7, depthLayer: 'mid', depthScale: 0.95, zOffset: 0.65 },
+  'after-effects': { ringIndex: 3, desktopThetaDeg: 120.5, mobileThetaDeg: 120.5, depthLayer: 'mid', depthScale: 1.0, zOffset: 0.47 },
+  figma: { ringIndex: 4, desktopThetaDeg: 48.2, mobileThetaDeg: 48.2, depthLayer: 'front', depthScale: 1.1, zOffset: 0.47 },
+  chatgpt: { ringIndex: 4, desktopThetaDeg: 136.3, mobileThetaDeg: 136.3, depthLayer: 'front', depthScale: 1.1, zOffset: 0.65 },
+  gemini: { ringIndex: 4, desktopThetaDeg: 168.0, mobileThetaDeg: 168.0, depthLayer: 'mid', depthScale: 1.0, zOffset: 0.65 },
+  premiere: { ringIndex: 4, desktopThetaDeg: 197.6, mobileThetaDeg: 197.6, depthLayer: 'back', depthScale: 0.85, zOffset: 0.78 },
+  blender: { ringIndex: 4, desktopThetaDeg: 359.9, mobileThetaDeg: 359.9, depthLayer: 'back', depthScale: 0.88, zOffset: 0.65 },
 };
 
-export function getEarthOrbitConfig(aspect = 1.6): EarthOrbitConfig {
-  const isPortrait = aspect < 0.85;
-  return isPortrait
-    ? {
-        earthCenterY: -16.8,
-        earthRadius: 8.5,
-        earthZ: -1.4,
-        ringRadii: [10.3, 12.1, 13.9, 15.7, 17.5],
-        ringSpeedMultipliers: [1.0, 1.0, 1.0, 1.0, 1.0],
-        wrapMinDeg: 44,
-        wrapMaxDeg: 136,
-      }
-    : {
-        earthCenterY: -8.35,
-        earthRadius: 5.05,
-        earthZ: -1.2,
-        ringRadii: [6.0, 6.9, 7.8, 8.7, 9.6],
-        ringSpeedMultipliers: [1.0, 1.0, 1.0, 1.0, 1.0],
-        wrapMinDeg: -14,
-        wrapMaxDeg: 194,
-      };
+export function getEarthOrbitConfig(_aspect = 1.6): EarthOrbitConfig {
+  return {
+    earthCenterY: 0,
+    earthRadius: 2.998,
+    earthZ: -0.2,
+    ringRadii: [3.882, 4.655, 5.366, 6.210, 7.016],
+    ringSpeedMultipliers: [1.0, 1.0, 1.0, 1.0, 1.0],
+    wrapMinDeg: 0,
+    wrapMaxDeg: 360,
+  };
 }
 
 export function getOrbitCenterY(aspect = 1.6): number {
