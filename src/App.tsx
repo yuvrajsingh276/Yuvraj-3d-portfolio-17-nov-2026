@@ -146,10 +146,21 @@ export default function App() {
     (e: ReactMouseEvent<HTMLAnchorElement>, id: NavSectionId) => {
       e.preventDefault();
       window.dispatchEvent(new Event('portfolio:navigate'));
-      scrollToSection(id, id);
+      if (projectId) {
+        window.location.hash = id;
+        requestAnimationFrame(() => scrollToSection(id, id));
+      } else {
+        scrollToSection(id, id);
+      }
     },
     [scrollToSection, projectId]
   );
+
+  useEffect(() => {
+    if (!projectId && window.location.hash === '#work') {
+      requestAnimationFrame(() => scrollToSection('work', 'work'));
+    }
+  }, [projectId, scrollToSection]);
 
   const activeTheme = SECTION_THEMES[activeSection];
 
@@ -256,6 +267,8 @@ export default function App() {
         />
       </main>
 
+      </>}
+
       {/* Architectural 3-zone top navigation bar */}
       <header
         className={`fixed inset-x-0 top-0 z-[60] border-b backdrop-blur-md transition-colors duration-300 ${
@@ -357,7 +370,6 @@ export default function App() {
         )}
       </header>
 
-      </>}
       {projectId && <ProjectDetailPage projectId={projectId} onBack={returnToCollection} onNext={openProject} />}
 
       {/* Persistent right-side dot navigation */}
