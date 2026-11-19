@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { ArrowLeft, ArrowRight, ArrowUpRight, Play, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, Play } from 'lucide-react';
 
 type Project = {
   id: string; title: string; category: string; description: string;
@@ -61,14 +61,6 @@ export function WorkGallery() {
   return (
     <section aria-label="Selected work" className="work-exhibition relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#080d14] text-white">
       <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse at 78% 42%,rgba(108,130,158,.12),transparent 48%),linear-gradient(180deg,#0b111b 0%,#080d14 100%)' }} />
-      <header className="relative z-20 flex h-[58px] shrink-0 items-center justify-between border-b border-white/[.08] px-5 sm:px-9 lg:px-14">
-        <button type="button" onClick={() => setDetail(false)} className="font-semibold tracking-[.22em] text-[11px] sm:text-xs">Y<span className="text-white/35">.</span>S<span className="ml-2 font-normal tracking-[.16em] text-white/40">STUDIO</span></button>
-        <nav className="hidden items-center gap-6 text-[9px] font-medium tracking-[.2em] text-white/45 sm:flex">
-          <button onClick={() => setDetail(false)} className="text-white transition">WORK</button><span>ABOUT</span><span>EXPERIENCE</span><span>CONTACT</span>
-        </nav>
-        <div className="flex items-center gap-3"><span className="hidden text-[9px] tracking-[.16em] text-white/35 sm:block">SELECTED PROJECTS</span><span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_#6ee7b7]" /></div>
-      </header>
-
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         <AnimatePresence mode="wait" initial={false}>
           {!detail ? (
