@@ -169,7 +169,7 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div id="home" className="relative isolate flow-root min-h-screen bg-[#010207]">
+      <div id="home" className={`relative isolate flow-root min-h-screen bg-[#010207] ${projectId ? "min-h-0 overflow-x-hidden" : ""}`}>
       {!projectId && <>
       <main
         onPointerMove={(e) => {
@@ -269,8 +269,6 @@ export default function App() {
           onResetView={handleResetView}
         />
       </main>
-
-      </>}
 
       {/* Architectural 3-zone top navigation bar */}
       <header
@@ -373,8 +371,7 @@ export default function App() {
         )}
       </header>
 
-      {projectId && <ProjectDetailPage projectId={projectId} onBack={returnToCollection} onNext={openProject} />}
-
+      {!projectId && <>
       {/* Persistent right-side dot navigation */}
       {!projectId && <SectionDotNav activeSection={activeSection} onSelectSection={scrollToSection} />}
 
@@ -441,6 +438,9 @@ export default function App() {
 
       {/* Precision dual-layer magnetic custom cursor */}
       {!projectId && <CustomCursor accentHex={activeTheme.accentHex} accentGlow={activeTheme.accentGlow} />}
+      </>}
+
+      {projectId && <ProjectDetailPage projectId={projectId} onBack={returnToCollection} onNext={openProject} />}
       </div>
     </MotionConfig>
   );
