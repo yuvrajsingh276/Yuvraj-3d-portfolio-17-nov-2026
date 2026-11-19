@@ -355,6 +355,8 @@ export class ShowcaseStage {
     // Keep the orbit in the exact same coordinate space as the icon anchors.
     this.constellationGroup.add(this.orbitGuideRing);
     this.rebuildOrbitalGuideRing(aspect, this.magneticRotation.angleDeg);
+    // Keep the orbital guide hidden; the moving stardust particles remain visible.
+    this.orbitGuideRing.visible = false;
   }
 
   /** Fixed tilted oval using the exact arc-length curve shared by icons and orbit particles. */
@@ -684,10 +686,10 @@ export class ShowcaseStage {
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
     const mat = new THREE.PointsMaterial({
-      size: 0.145,
+      size: 0.095,
       map: this.textures.glowSprite,
       transparent: true,
-      opacity: 0.76,
+      opacity: 0.72,
       vertexColors: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
