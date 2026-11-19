@@ -173,7 +173,7 @@ export function ExperienceAbout() {
             <div className="flex flex-col justify-center gap-3.5 sm:gap-4">
               <a
                 href="mailto:"
-                className="group flex min-h-[82px] items-center justify-between rounded-2xl border border-fuchsia-300/18 bg-[#17112b]/88 p-4 shadow-[0_20px_50px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(240,171,252,0.1)] backdrop-blur-md transition hover:border-fuchsia-300/45 sm:p-5"
+                className="group relative flex min-h-[82px] items-center justify-between overflow-hidden rounded-2xl border border-fuchsia-200/35 bg-gradient-to-b from-[#38234f] via-[#211532] to-[#120d20] p-4 shadow-[0_7px_0_#080511,0_15px_30px_rgba(0,0,0,0.48),inset_0_2px_0_rgba(255,255,255,0.22),inset_0_-3px_0_rgba(0,0,0,0.28)] backdrop-blur-md transition-all duration-200 hover:-translate-y-1 hover:border-fuchsia-200/70 hover:brightness-110 hover:shadow-[0_9px_0_#080511,0_20px_38px_rgba(217,70,239,0.2),inset_0_2px_0_rgba(255,255,255,0.25)] active:translate-y-1 active:shadow-[0_3px_0_#080511,0_8px_18px_rgba(0,0,0,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0e0a1b] sm:p-5"
               >
                 <span className="flex items-center gap-3.5 sm:gap-4">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-fuchsia-300/25 bg-fuchsia-400/12 text-fuchsia-300">
@@ -191,7 +191,7 @@ export function ExperienceAbout() {
                 href="https://www.linkedin.com/in/yuvrajsinghdesign/"
                 target="_blank"
                 rel="noreferrer"
-                className="group flex min-h-[82px] items-center justify-between rounded-2xl border border-fuchsia-300/18 bg-[#17112b]/88 p-4 shadow-[0_20px_50px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(240,171,252,0.1)] backdrop-blur-md transition hover:border-fuchsia-300/45 sm:p-5"
+                className="group relative flex min-h-[82px] items-center justify-between overflow-hidden rounded-2xl border border-violet-200/35 bg-gradient-to-b from-[#302653] via-[#1d1835] to-[#100d20] p-4 shadow-[0_7px_0_#080511,0_15px_30px_rgba(0,0,0,0.48),inset_0_2px_0_rgba(255,255,255,0.22),inset_0_-3px_0_rgba(0,0,0,0.28)] backdrop-blur-md transition-all duration-200 hover:-translate-y-1 hover:border-violet-200/70 hover:brightness-110 hover:shadow-[0_9px_0_#080511,0_20px_38px_rgba(139,92,246,0.2),inset_0_2px_0_rgba(255,255,255,0.25)] active:translate-y-1 active:shadow-[0_3px_0_#080511,0_8px_18px_rgba(0,0,0,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0e0a1b] sm:p-5"
               >
                 <span className="flex items-center gap-3.5 sm:gap-4">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-fuchsia-300/25 bg-fuchsia-400/12 text-fuchsia-300">
@@ -208,7 +208,7 @@ export function ExperienceAbout() {
               <a
                 href="/resume.pdf"
                 download
-                className="portfolio-body mt-1 flex min-h-[58px] items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-fuchsia-500 to-violet-600 px-6 py-4 font-semibold text-white shadow-[0_14px_42px_rgba(217,70,239,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_52px_rgba(217,70,239,0.42)] sm:mt-2"
+                className="portfolio-body relative isolate mt-1 flex min-h-[62px] items-center justify-center gap-3 overflow-hidden rounded-xl border border-fuchsia-100/55 bg-gradient-to-b from-[#f06bff] via-[#a83df0] to-[#6425c9] px-6 py-4 font-bold tracking-wide text-white shadow-[0_7px_0_#35106f,0_15px_32px_rgba(168,61,240,0.36),inset_0_2px_0_rgba(255,255,255,0.5),inset_0_-3px_0_rgba(54,12,105,0.35)] transition-all duration-200 hover:-translate-y-1 hover:brightness-110 hover:shadow-[0_9px_0_#35106f,0_22px_42px_rgba(217,70,239,0.42),inset_0_2px_0_rgba(255,255,255,0.58)] active:translate-y-1 active:shadow-[0_3px_0_#35106f,0_8px_18px_rgba(168,61,240,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-200 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0e0a1b] sm:mt-2"
               >
                 <ArrowDownToLine className="h-4 w-4" /> Download Resume
               </a>
