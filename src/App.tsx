@@ -6,7 +6,7 @@ import { ShowcaseStage } from './scene/ShowcaseStage';
 import { ParticleWaveBackground } from './components/ParticleWaveBackground';
 import { ShowcaseHUD } from './components/ShowcaseHUD';
 import type { ToolSpec } from './scene/showcaseLogic';
-import { WorkGallery } from './components/WorkGallery';
+import { WorkGallery, ProjectDetailPage } from './components/WorkGallery';
 import { ExperienceAbout } from './components/ExperienceAbout';
 import { MagneticNavLink } from './components/MagneticNavLink';
 import { SectionDotNav } from './components/SectionDotNav';
@@ -39,6 +39,16 @@ export default function App() {
   const [activeSection, setActiveSection] = useState<PageSectionId>('home');
   const [navScrolled, setNavScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [projectId, setProjectId] = useState<string | null>(() => window.location.hash.match(/^#project\/(\d{2})$/)?.[1] ?? null);
+
+  useEffect(() => {
+    const syncProjectRoute = () => setProjectId(window.location.hash.match(/^#project\/(\d{2})$/)?.[1] ?? null);
+    window.addEventListener('hashchange', syncProjectRoute);
+    return () => window.removeEventListener('hashchange', syncProjectRoute);
+  }, []);
+
+  const openProject = useCallback((id: string) => { window.location.hash = `project/${id}`; }, []);
+  const returnToCollection = useCallback(() => { window.location.hash = 'work'; }, []);
 
   useEffect(() => {
     const container = canvasMountRef.current;
@@ -138,7 +148,7 @@ export default function App() {
       window.dispatchEvent(new Event('portfolio:navigate'));
       scrollToSection(id, id);
     },
-    [scrollToSection]
+    [scrollToSection, projectId]
   );
 
   const activeTheme = SECTION_THEMES[activeSection];
@@ -146,6 +156,7 @@ export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       <div id="home" className="relative isolate flow-root min-h-screen bg-[#010207]">
+      {!projectId && <>
       <main
         onPointerMove={(e) => {
           e.currentTarget.style.setProperty('--pointer-x', e.clientX + 'px');
@@ -346,14 +357,17 @@ export default function App() {
         )}
       </header>
 
+      </>}
+      {projectId && <ProjectDetailPage projectId={projectId} onBack={returnToCollection} onNext={openProject} />}
+
       {/* Persistent right-side dot navigation */}
-      <SectionDotNav activeSection={activeSection} onSelectSection={scrollToSection} />
+      {!projectId && <SectionDotNav activeSection={activeSection} onSelectSection={scrollToSection} />}
 
       {/* Hero viewport spacer before Video section slides up over the fixed hero */}
-      <div className="pointer-events-none h-[100svh]" aria-hidden="true" />
+      {!projectId && <div className="pointer-events-none h-[100svh]" aria-hidden="true" />}
 
       {/* Section 01 · Video: Warm Cinema Amber & Crimson Velvet (#11090e) */}
-      <section id="intro-video" aria-label="Video introduction" className="relative z-20 h-[230svh]">
+      {!projectId && <section id="intro-video" aria-label="Video introduction" className="relative z-20 h-[230svh]">
         <div className="sticky top-0 flex h-[100svh] w-full items-center justify-center overflow-hidden border-t border-amber-300/15 bg-[#11090e] px-5 pt-20 pb-8 sm:px-8 sm:pt-24 sm:pb-12 lg:px-12">
           {/* Layer 1: Atmospheric warm cinema lighting */}
           <div
@@ -398,20 +412,20 @@ export default function App() {
             </div>
           </div>
         </div>
-      </section>
+      </section>}
 
       {/* Section 02 · Work: Deep Oceanic Slate & Electric Cyan (#071019) */}
-      <div id="work" className="relative z-30 -mt-[100svh] h-[230svh]">
+      {!projectId && <div id="work" className="relative z-30 -mt-[100svh] h-[230svh]">
         <div className="sticky top-0 flex h-[100svh] items-center overflow-hidden border-t border-sky-300/15 bg-[#071019] pt-16">
-          <WorkGallery />
+          <WorkGallery onOpenProject={openProject} />
         </div>
-      </div>
+      </div>}
 
       {/* Sections 03 & 04 · Experience (Deep Emerald Slate) & About (Aubergine Indigo) */}
-      <ExperienceAbout />
+      {!projectId && <ExperienceAbout />}
 
       {/* Precision dual-layer magnetic custom cursor */}
-      <CustomCursor accentHex={activeTheme.accentHex} accentGlow={activeTheme.accentGlow} />
+      {!projectId && <CustomCursor accentHex={activeTheme.accentHex} accentGlow={activeTheme.accentGlow} />}
       </div>
     </MotionConfig>
   );
