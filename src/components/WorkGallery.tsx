@@ -49,6 +49,12 @@ export function WorkGallery() {
   const move = useCallback((direction: number) => select(active + direction), [active, select]);
 
   useEffect(() => {
+    const closeProjectDetail = () => setDetail(false);
+    window.addEventListener('portfolio:navigate', closeProjectDetail);
+    return () => window.removeEventListener('portfolio:navigate', closeProjectDetail);
+  }, []);
+
+  useEffect(() => {
     if (!detail) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
