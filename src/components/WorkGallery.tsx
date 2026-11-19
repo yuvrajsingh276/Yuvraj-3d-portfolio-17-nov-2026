@@ -49,6 +49,13 @@ export function WorkGallery() {
   const move = useCallback((direction: number) => select(active + direction), [active, select]);
 
   useEffect(() => {
+    if (!detail) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [detail]);
+
+  useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'ArrowRight') move(1);
       if (event.key === 'ArrowLeft') move(-1);
@@ -89,6 +96,7 @@ export function WorkGallery() {
               <div className="relative flex min-h-[430px] flex-col justify-center px-6 pb-12 pt-16 sm:px-12 lg:min-h-0 lg:px-[7vw]">
                 <button type="button" onClick={() => setDetail(false)} className="absolute left-6 top-6 inline-flex items-center gap-2 text-[9px] tracking-[.2em] text-white/50 transition hover:text-white sm:left-12"><ArrowLeft size={13} /> BACK TO COLLECTION</button>
                 <p className="mb-4 text-[9px] font-semibold tracking-[.28em]" style={{ color: project.accent }}>{project.category}</p>
+                <button type="button" onClick={() => move(1)} className="mb-5 inline-flex w-fit items-center gap-2 border border-white/20 px-4 py-2 text-[9px] font-semibold tracking-[.18em] text-white/75 transition hover:border-white/60 hover:bg-white/[.08] hover:text-white">NEXT PROJECT <ArrowRight size={13} /></button>
                 <h2 className="max-w-[13ch] text-[clamp(2.2rem,5vw,4.6rem)] font-semibold leading-[.98] tracking-[-.06em]">{project.title}</h2>
                 <p className="mt-5 max-w-lg text-sm leading-7 text-white/55">{project.description}</p>
                 <div className="mt-8 grid max-w-lg grid-cols-3 border-y border-white/10 py-4">
@@ -98,10 +106,19 @@ export function WorkGallery() {
                   <p className="mb-3 text-[8px] font-semibold tracking-[.25em] text-white/35">PROJECT CONTENT</p>
                   {project.frames.map((frame, i) => <div key={frame} className="flex items-center gap-3 border-b border-white/[.08] py-3"><span className="font-mono text-[9px] text-white/30">0{i + 1}</span><span className="flex-1 text-xs text-white/75">{frame}</span><ArrowUpRight size={13} className="text-white/35" /></div>)}
                 </div>
-                <div className="mt-7 flex items-center gap-3"><button type="button" onClick={() => move(-1)} aria-label="Previous project" className="grid h-9 w-9 place-items-center border border-white/15 hover:bg-white/10"><ArrowLeft size={14} /></button><button type="button" onClick={() => move(1)} aria-label="Next project" className="grid h-9 w-9 place-items-center border border-white/15 hover:bg-white/10"><ArrowRight size={14} /></button><span className="ml-2 font-mono text-[9px] tracking-[.18em] text-white/35">{project.id} / 10</span></div>
+
               </div>
-              <div className="relative hidden min-h-0 overflow-hidden border-l border-white/[.08] lg:block"><Visual project={project} className="absolute inset-0" /><div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#080d14]/25" /><div className="absolute bottom-8 right-8 text-right"><p className="text-[8px] tracking-[.25em] text-white/45">SELECTED PROJECT</p><p className="mt-2 text-xs tracking-widest text-white/80">{project.id} — {project.category}</p></div></div>
-              <div className="flex gap-2 overflow-x-auto border-t border-white/10 bg-[#080d14] p-4 lg:hidden">{projects.map((item, index) => <button key={item.id} onClick={() => select(index)} className={`h-12 w-20 shrink-0 overflow-hidden border ${index === active ? 'border-white' : 'border-white/10 opacity-50'}`}><Visual project={item} className="h-full w-full" /></button>)}</div>
+              <div className="relative hidden min-h-[70vh] overflow-hidden border-l border-white/[.08] lg:block"><Visual project={project} className="absolute inset-0" /><div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#080d14]/25" /><div className="absolute bottom-8 right-8 text-right"><p className="text-[8px] tracking-[.25em] text-white/45">PROJECT COVER / {project.year}</p><p className="mt-2 text-xs tracking-widest text-white/80">{project.id} — {project.category}</p></div></div>
+              <div className="col-span-full border-t border-white/[.08] bg-[#080d14] px-6 py-10 sm:px-12 lg:px-[7vw]">
+                <p className="mb-5 text-[9px] font-semibold tracking-[.25em] text-white/40">PROJECT GALLERY / SELECTED FRAMES</p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  {project.frames.map((frame, index) => <div key={frame} className="group">
+                    <div className="relative aspect-[4/3] overflow-hidden border border-white/10"><Visual project={project} className="h-full w-full transition-transform duration-700 group-hover:scale-[1.04]" /><span className="absolute bottom-3 left-3 font-mono text-[9px] tracking-widest text-white/75">0{index+1}</span></div>
+                    <p className="mt-3 text-[10px] tracking-[.12em] text-white/65">{frame}</p>
+                  </div>)}
+                </div>
+                <button type="button" onClick={() => move(1)} className="mt-9 inline-flex items-center gap-3 border border-white/25 px-5 py-3 text-[9px] font-semibold tracking-[.2em] text-white/80 transition hover:border-white/70 hover:bg-white/[.08]">NEXT PROJECT <ArrowRight size={13} /></button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
