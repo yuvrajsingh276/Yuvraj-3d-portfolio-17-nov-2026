@@ -157,8 +157,11 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (!projectId && window.location.hash === '#work') {
-      requestAnimationFrame(() => scrollToSection('work', 'work'));
+    if (!projectId) {
+      const section = window.location.hash.slice(1) as PageSectionId;
+      if (['home', 'work', 'experience', 'about'].includes(section)) {
+        requestAnimationFrame(() => scrollToSection(section, section));
+      }
     }
   }, [projectId, scrollToSection]);
 
