@@ -270,6 +270,8 @@ export default function App() {
         />
       </main>
 
+      </>}
+
       {/* Architectural 3-zone top navigation bar */}
       <header
         className={`fixed inset-x-0 top-0 z-[60] border-b backdrop-blur-md transition-colors duration-300 ${
